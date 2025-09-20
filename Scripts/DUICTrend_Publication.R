@@ -17,7 +17,7 @@
 # clean workspace
 rm(list=ls())
 
-packages <- c("tidyverse", "car", "haven", "kableExtra", "boot", "emmeans", "sf", "rnaturalearthdata", "rnaturalearth") 
+packages <- c("tidyverse", "car", "haven", "kableExtra", "boot", "emmeans", "sf", "rnaturalearthdata", "rnaturalearth", "ggthemes")
 
 # Install packages not yet installed
 installed_packages <- packages %in% rownames(installed.packages())
@@ -31,7 +31,7 @@ invisible(lapply(packages, library, character.only = TRUE))
 DATE <- format(Sys.Date(), "%Y%m%d")
 
 #write and export data? 
-dataexport <- FALSE #TRUE = export data, FALSE = no export
+dataexport <- TRUE #TRUE = export data, FALSE = no export
 
 folder_path_plots <- "Output/figures/" # folder for plots
 folder_path_tables <- "Output/tables/" # folder for tables
@@ -283,7 +283,7 @@ laendergrenzen <- ne_countries(scale = "medium", returnclass = "sf") %>%
 welle_labels_fw <- c("1" = "t0", "2" = "t1")
 
 map <- ggplot() +
-  geom_sf(data = gemeinden_mit_daten, aes(fill = Land, color = Land), alpha = 0.6, size = 0.01) +
+  geom_sf(data = gemeinden_mit_daten, aes(fill = Land, color = Land), alpha = 0.7, size = 0.01) +
   geom_sf(data = laendergrenzen, fill = NA, color = "black", size = 0.5) +
   facet_wrap(~ Welle, labeller = labeller(Welle = welle_labels_fw)) +
   scale_fill_manual(values = colors_country, labels = country_labels) +
@@ -292,9 +292,9 @@ map <- ggplot() +
   theme(strip.text = element_text(size = 15, face = "bold"),
         legend.position = "bottom",
         legend.title = element_blank(),
-        legend.text = element_text(size = 14),
-        plot.margin = margin(t = 10, r = 10, b = 10, l = 10, unit = "pt"),
-        plot.background = element_rect(color = "black", fill = NA, linewidth = 0.5)
+        legend.text = element_text(size = 14)
+        #plot.margin = margin(t = 10, r = 10, b = 10, l = 10, unit = "pt"),
+        #plot.background = element_rect(color = "black", fill = NA, linewidth = 0.5)
   )
 
 # Save the map
@@ -305,6 +305,7 @@ if (dataexport) {
     width = 7,
     height = 4.5,
     dpi = 500,
+    bg = "white",
     device = "tiff"
   )
 }
@@ -492,35 +493,47 @@ trend_canuse_pre <- ggplot(cannabis_use_data, aes(x = Jahr, y = can_use_prev12M,
   geom_line(size = 1) +
   geom_point(size = 3) +
   labs(x = "Year",
-    y = "Past 12-month cannabis use prevalence",
-    color = "",
-    linetype = ""
+       y = "Past 12-month cannabis use prevalence",
+       color = "",
+       linetype = ""
   ) +
   scale_y_continuous(
-    breaks = seq(0, 14, by = 2),
-    labels = paste0(seq(0, 14, by = 2), "%"),
-    limits = c(0, 14)
+    breaks = seq(0, 15, by = 2),
+    labels = paste0(seq(0, 15, by = 2), "%"),
+    limits = c(0, 15), expand = c(0, 0)
   ) +
   scale_x_continuous(
-    breaks = seq(2000, 2025, by = 4),
-    limits = c(2000, 2025)
+    breaks = seq(2000, 2025, by = 2),
+    limits = c(2000, 2025), expand = c(0, 0)
   ) +
   scale_color_manual(values = colors_country, labels = country_labels) +
   scale_linetype_manual(values = c("twodash", "solid")) +
-  theme_minimal() +
+  theme_gdocs(base_family = "Calibri") +
   theme(
-    panel.grid.minor = element_blank(),
-    axis.title.y = element_text(size = 15),
-    axis.title.x = element_text(size = 15),
-    axis.text = element_text(size = 13),
-    strip.text = element_text(size = 14, face = "bold"),
+    panel.grid.minor = element_line(color = "gray80", linetype = "dotted", linewidth = 0.3),
+    axis.title.y = element_text(color= "black"),
+    axis.title.x = element_text(color= "black"),
+    axis.text.y = element_text(color= "black"),
+    axis.text.x = element_text(color= "black", angle = 45, hjust = 1),
+    strip.text = element_text(color= "black", face = "bold"),
     legend.position = "bottom",
-    legend.title = element_text(size = 15),
-    legend.text = element_text(size = 13),
-    legend.margin = margin(t = -5, b = 0, unit = "pt"),
-    legend.box.margin = margin(t = -10, unit = "pt"),
-    plot.background = element_rect(color = "black", fill = NA, linewidth = 0.5)
-  )
+    legend.title = element_text(color= "black"),
+    legend.text = element_text(color= "black")
+  ) +
+  guides(color = guide_legend(nrow = 2, byrow = TRUE))
+  # theme(
+  #   panel.grid.minor = element_blank(),
+  #   axis.title.y = element_text(size = 15),
+  #   axis.title.x = element_text(size = 15),
+  #   axis.text = element_text(size = 13),
+  #   strip.text = element_text(size = 14, face = "bold"),
+  #   legend.position = "bottom",
+  #   legend.title = element_text(size = 15),
+  #   legend.text = element_text(size = 13),
+  #   legend.margin = margin(t = -5, b = 0, unit = "pt"),
+  #   legend.box.margin = margin(t = -10, unit = "pt"),
+  #   plot.background = element_rect(color = "black", fill = NA, linewidth = 0.5)
+  # )
 
 #save as tiff
 if (dataexport) {
@@ -687,7 +700,7 @@ aggregates_plot <- bind_rows(
       lower = weighted_ci_lower,
       upper = weighted_ci_upper
     ) %>%
-    mutate(variable = "Past 12-month cannabis use"),
+    mutate(variable = "a) Past 12-month cannabis use"),
   
   aggregates_DUIC %>%
     select(Land, Welle, unweighted_prop, unweighted_ci_lower, unweighted_ci_upper) %>%
@@ -696,26 +709,27 @@ aggregates_plot <- bind_rows(
       lower = unweighted_ci_lower,
       upper = unweighted_ci_upper
     ) %>%
-    mutate(variable = "Past 12-month DUIC")
+    mutate(variable = "b) Past 12-month DUIC")
 )
 
 
 #plot 
 plot_DUIC_canuse <- aggregates_plot %>%
   ggplot(aes(x = as.factor(Welle), y = prop, color = Land, group = Land)) +
-  geom_point(size = 2, position = position_dodge(width = 0.05)) +
+  geom_point(size = 1.5, position = position_dodge(width = 0.05)) +
   geom_line(linewidth = 0.5, position = position_dodge(width = 0.05)) +
-  geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.05, size = 0.4, position = position_dodge(width = 0.05)) +
+  geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.09, size = 0.4, position = position_dodge(width = 0.05)) +
   geom_label(
     aes(label = scales::percent(prop, accuracy = 0.1)),
     position = position_dodge(width = 0.75),
     vjust = -0.5,
-    size = 3.1,
+    size = 3.3,
     show.legend = FALSE
   ) +
   facet_wrap(~ variable) +
   scale_y_continuous(limits = c(0, 0.4),
-                     breaks = seq(0, 0.4, by = 0.05),
+                     breaks = seq(0, 0.4, by = 0.1),
+                     expand = c(0,0),
                      labels = scales::percent_format(accuracy = 1)) +
   labs(
     y = "Prevalence",
@@ -724,21 +738,36 @@ plot_DUIC_canuse <- aggregates_plot %>%
   ) +
   scale_color_manual(values = colors_country, labels = country_labels) +
   scale_x_discrete(labels = welle_labels) +
-  theme_minimal() +
+  theme_gdocs(base_family = "Calibri") +
   theme(
+    panel.grid.minor = element_line(color = "gray80", linetype = "dotted", linewidth = 0.3),
     panel.grid.major.x = element_blank(),
-    panel.grid.minor = element_blank(),
-    axis.title.y = element_text(size = 15),
-    axis.text = element_text(size = 13),
-    strip.text = element_text(size = 14, face = "bold"),
+    axis.title.y = element_text(color= "black"),
+    axis.text = element_text(color= "black"),
+    strip.text = element_text(color= "black", face = "bold"),
     legend.position = "bottom",
-    legend.title = element_text(size = 15),
-    legend.text = element_text(size = 13),
+    legend.title = element_text(color= "black"),
+    legend.text = element_text(color= "black"),
     legend.margin = margin(t = -5, b = 0, unit = "pt"),
     legend.box.margin = margin(t = -10, unit = "pt"),
-    plot.background = element_rect(color = "black", fill = NA, linewidth = 0.5),
+    #plot.background = element_rect(color = "black", fill = NA, linewidth = 0.5)
     panel.border = element_rect(color = "black", fill = NA, linewidth = 0.3)
+  ) +
+  guides(color = guide_legend(nrow = 1, byrow = TRUE))
+
+#export as tiff
+if (dataexport) {
+  ggsave(
+    filename = paste0(folder_path_plots, "DUIC_canuse_prevalence_", DATE, ".tiff"),
+    plot = plot_DUIC_canuse,
+    bg = "white",
+    width = 7,
+    height = 4,
+    dpi = 300,
+    device = "tiff"
   )
+}
+
 
 # for DSK
 plot_DUIC_DSK <- aggregates_plot %>% filter (variable == "Past 12-month DUIC") %>%
@@ -793,21 +822,6 @@ if (dataexport) {
   )
 }
 
-
-
-
-#export as tiff
-if (dataexport) {
-  ggsave(
-    filename = paste0(folder_path_plots, "DUIC_canuse_prevalence_", DATE, ".tiff"),
-    plot = plot_DUIC_canuse,
-    bg = "white",
-    width = 7,
-    height = 4,
-    dpi = 500,
-    device = "tiff"
-  )
-}
 
 
 # ==================================================================================================================================================================
@@ -877,7 +891,7 @@ DUIC30_df <- df_GSZB2 %>%
     !(MEDICALUSE.01 == "Ausschließlich für medizinische Zwecke" &
         MEDICALUSE.02 == "Ja, mir wurde medizinisches Cannabis ärztlich verschrieben (bezahlt durch Krankenkasse oder als Selbstzahler)"),
     can_freq != "gar nicht",
-  #  DUIC30d_full == 1,
+    #  DUIC30d_full == 1,
     Welle == 2
   ) %>%
   mutate(
@@ -900,7 +914,7 @@ DUIC30_df <- df_GSZB2 %>%
       & !is.na(DUIC_psu_freq_30_num) & DUIC_freq_30_num < 99,
       1, 0
     ))
-     
+
 
 #check
 summary(DUIC30_df %>% filter(analyseDUIC == 1) %>% pull(DUIC_only_freq_30_num))
@@ -946,29 +960,29 @@ pop_duicep_long <- sum_duicep %>%
   ) %>%
   mutate(
     grundgesamtheit = dplyr::recode(grundgesamtheit,
-                             "share_users" = "Cannabis users",
-                             "share_duicep" = "DUIC episodes",
-                             "share_duicep_only" = "DUIC-only episodes",
-                             "share_duic_psu" = "DUIC-PSU episodes"),
+                                    "share_users" = "Cannabis users",
+                                    "share_duicep" = "DUIC episodes",
+                                    "share_duicep_only" = "DUIC-only episodes",
+                                    "share_duic_psu" = "DUIC-PSU episodes"),
     grundgesamtheit = factor(grundgesamtheit, levels = c("Cannabis users",
                                                          "DUIC episodes",
                                                          "DUIC-only episodes",
                                                          "DUIC-PSU episodes"),
-                            labels = c("Cannabis users", 
-                                       "DUIC episodes",
-                                       "DUIC(–) episodes",
-                                       "DUIC(+) episodes")),
+                             labels = c("Cannabis users", 
+                                        "DUIC episodes",
+                                        "DUIC(–) episodes",
+                                        "DUIC(+) episodes")),
     can_freq = dplyr::recode(can_freq,
-                      `seltener als einmal im Monat` = "Less than monthly",
-                      `mindestens einmal im Monat` = "Monthly",
-                      `mindestens einmal pro Woche` = "Weekly",
-                      `(fast) täglich` = "(Almost) daily"),
+                             `seltener als einmal im Monat` = "Less than monthly",
+                             `mindestens einmal im Monat` = "Monthly",
+                             `mindestens einmal pro Woche` = "Weekly",
+                             `(fast) täglich` = "(Almost) daily"),
     can_freq = factor(can_freq, levels = c("Less than monthly", "Monthly", "Weekly", "(Almost) daily"))
   )
-   
+
 #plot stacked bar chart
 fig1_w <- ggplot(pop_duicep_long %>% subset(grundgesamtheit != "DUIC episodes"), aes(x = grundgesamtheit, y = share, fill = can_freq)) +
-  geom_bar(stat = "identity", position = "fill") +
+  geom_bar(stat = "identity", position = "fill", width = 0.7) +
   geom_label(aes(x = grundgesamtheit, y = share, group = can_freq, label = scales::percent(share, accuracy = 1)),
              position = position_stack(vjust = 0.5), color = "black", fill = alpha("white", 0.9), label.size = 0, size = 4) +
   scale_fill_manual(values = blue_colors) +
@@ -978,24 +992,28 @@ fig1_w <- ggplot(pop_duicep_long %>% subset(grundgesamtheit != "DUIC episodes"),
     fill = "Cannabis use frequency",
     title = "",
   ) +
-  theme_minimal() +
+  scale_y_continuous(expand = c(0,0), limits = c(0,1), labels = scales::percent, breaks = seq(0, 1, by = 0.5)) +
+  theme_gdocs(base_family = "Calibri") +
   theme(
-    legend.position = "right",
-    legend.title = element_text(size = 13),
-    legend.text = element_text(size = 12),
-    axis.text.x = element_text(size = 13),
-    axis.title.y = element_text(size = 15),
-    axis.text.y = element_text(size = 13),
-    plot.background = element_rect(color = "black", fill = NA, linewidth = 0.5)
+    panel.grid.minor = element_line(color = "gray80", linetype = "dotted"),
+    panel.grid.major.x = element_blank(),
+    legend.position = "bottom",
+    legend.title = element_text(size = 13, color = "black"),
+    legend.text = element_text(size = 12, color = "black"),
+    axis.text.x = element_text(size = 13, color = "black", vjust = -0.3),
+    axis.title.y = element_text(size = 15, color = "black"),
+    axis.text.y = element_text(size = 13, color = "black"),
+    #plot.background = element_rect(color = "black", fill = NA, linewidth = 0.5)
   ) +
-  scale_y_continuous(labels = scales::percent)
+  #legend in one row
+  guides(fill = guide_legend(nrow = 1, byrow = TRUE))
 
 # save plot as tiff
 if (dataexport) {
   ggsave(
     filename = paste0(folder_path_plots, "pop_duiconlyep_duicpsuep_w_", DATE, ".tiff"),
     plot = fig1_w,
-    width = 9,
+    width = 8,
     height = 6,
     dpi = 500,
     bg = "white"
@@ -1101,7 +1119,7 @@ pop_duicep_long_GER <- sum_duicep_GER %>%
 
 #plot stacked bar chart
 fig1_w_GER <- ggplot(pop_duicep_long_GER %>% subset(grundgesamtheit != "DUIC episodes"), aes(x = grundgesamtheit, y = share, fill = can_freq)) +
-  geom_bar(stat = "identity", position = "fill") +
+  geom_bar(stat = "identity", position = "fill", width = 0.7) +
   geom_label(aes(x = grundgesamtheit, y = share, group = can_freq, label = scales::percent(share, accuracy = 1)),
              position = position_stack(vjust = 0.5), color = "black", fill = alpha("white", 0.9), label.size = 0, size = 4) +
   scale_fill_manual(values = blue_colors) +
@@ -1111,24 +1129,28 @@ fig1_w_GER <- ggplot(pop_duicep_long_GER %>% subset(grundgesamtheit != "DUIC epi
     fill = "Cannabis use frequency",
     title = "",
   ) +
-  theme_minimal() +
+  scale_y_continuous(expand = c(0,0), limits = c(0,1), labels = scales::percent, breaks = seq(0, 1, by = 0.5)) +
+  theme_gdocs(base_family = "Calibri") +
   theme(
-    legend.position = "right",
-    legend.title = element_text(size = 13),
-    legend.text = element_text(size = 12),
-    axis.text.x = element_text(size = 13),
-    axis.title.y = element_text(size = 15),
-    axis.text.y = element_text(size = 13),
-    plot.background = element_rect(color = "black", fill = NA, linewidth = 0.5)
+    panel.grid.minor = element_line(color = "gray80", linetype = "dotted"),
+    panel.grid.major.x = element_blank(),
+    legend.position = "bottom",
+    legend.title = element_text(size = 13, color = "black"),
+    legend.text = element_text(size = 12, color = "black"),
+    axis.text.x = element_text(size = 13, color = "black", vjust = -0.3),
+    axis.title.y = element_text(size = 15, color = "black"),
+    axis.text.y = element_text(size = 13, color = "black"),
+    #plot.background = element_rect(color = "black", fill = NA, linewidth = 0.5)
   ) +
-  scale_y_continuous(labels = scales::percent)
+  #legend in one row
+  guides(fill = guide_legend(nrow = 1, byrow = TRUE))
 
 # save plot as tiff
 if (dataexport) {
   ggsave(
     filename = paste0(folder_path_plots, "pop_duiconlyep_duicpsuep_w_GER_", DATE, ".tiff"),
     plot = fig1_w_GER,
-    width = 9,
+    width = 8,
     height = 6,
     dpi = 500,
     bg = "white"
