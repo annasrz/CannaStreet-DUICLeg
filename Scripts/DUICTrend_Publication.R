@@ -803,7 +803,7 @@ plot_DUIC_DSK <- aggregates_plot %>% filter (variable == "b) DUIC") %>%
                      breaks = seq(0, 0.4, by = 0.05), limits = c(0, 0.4), expand = c(0, 0)) +
   scale_x_discrete(labels = welle_labels) +
   scale_color_manual(values = colors_country) +
-  theme_gdocs(base_family = "Calibri", base_size = 10) +
+  theme_gdocs(base_family = "Aptos", base_size = 10) +
   theme(
     text = element_text(color = "black"),
     axis.text = element_text(color = "black"),
@@ -1051,7 +1051,7 @@ fig1_w_DSK <- ggplot(pop_duicep_long %>% subset(grundgesamtheit != "DUIC episode
     title = str_wrap("Verteilung der Cannabiskonsument:innen, DUIC(–)- und DUIC(+)-Fahrten nach Konsumhäufigkeit", width = 50),
     subtitle =  str_wrap("unter Personen mit DUIC in den letzten 30 Tagen in DE und AT (n=86), nach der Legalisierung", width = 100))+
   scale_y_continuous(expand = c(0,0), limits = c(0,1), labels = scales::percent, breaks = seq(0, 1, by = 0.5)) +
-  theme_gdocs(base_family = "Calibri", base_size = 10) +
+  theme_gdocs(base_family = "Aptos", base_size = 10) +
   theme(
     plot.title = element_text(color = "black"),
     plot.subtitle = element_text(color = "black"),
@@ -1073,7 +1073,7 @@ if (dataexport) {
   ggsave(
     filename = paste0(folder_path_plots, "pop_duiconlyep_duicpsuep_w_DSK", DATE, ".tiff"),
     plot = fig1_w_DSK,
-    width = 150,                   
+    width = 159,                   
     height = 110,                  
     units = "mm",                  
     dpi = 400,
