@@ -775,58 +775,65 @@ if (dataexport) {
 }
 
 
-# # for DSK
-# plot_DUIC_DSK <- aggregates_plot %>% filter (variable == "Past 12-month DUIC") %>%
-#   ggplot(aes(x = as.factor(Welle), y = prop, color = Land, group = Land)) +
-#   geom_line(size = 1, position = position_dodge(width = 0.05)) +  
-#   geom_point(size = 3, position = position_dodge(width = 0.05)) +  # Punkte leicht versetzen damit sch die KIs nicht überlappen
-#   geom_errorbar(aes(ymin = lower, ymax = upper), 
-#                 width = 0.04, alpha = 0.5, size = 0.4, position = position_dodge(width = 0.05))  + # Fehlerbalken versetzen
-#   geom_label(aes(label = scales::percent(prop, accuracy = 0.1)), 
-#              size = 5, 
-#              label.size = 0.2, 
-#              fill = "white", 
-#              color = "black", 
-#              hjust = -0.2, 
-#              vjust = -1,   
-#              fontface = "bold", 
-#              position = position_dodge(width = 0.1)) +  # Labels versetzen
-#   labs(title = "12-Monats-Prävalenz DUIC+ in DE und AT",
-#        subtitle = paste("Vergleich vor und nach Legalisierung, min. monatl. Cannabiskonsum,\nexkl. ausschl. med. Konsum mit Rezept\n(DE, t0: n=393",
-#                         ", t1: n=589",
-#                         "; AT, t0: n=86",
-#                         ", t1: n=92",")"),
-#        y = "12-Monats-Prävalenz",
-#        x = "",
-#        color = "Land") +  
-#   scale_y_continuous(labels = scales::percent_format(accuracy = 1),
-#                      breaks = seq(0, 0.4, by = 0.04), limits = c(0, 0.4), expand = c(0, 0)) +
-#   scale_x_discrete(labels = welle_labels) +
-#   scale_color_manual(values = colors_country) +
-#   theme_minimal(base_size = 16) +  
-#   theme(
-#     text = element_text(size = 16),
-#     axis.text = element_text(size = 16),
-#     axis.ticks.length = unit(0.3, "cm"),
-#     panel.grid.major.x = element_blank(),
-#     panel.grid.minor.x = element_blank(),
-#     legend.title = element_text(face = "bold"),
-#     plot.title = element_text(face = "bold", size = 18),
-#     plot.subtitle = element_text(size = 14)
-#   )
-# 
-# #save as svg
-# if (dataexport) {
-#   ggsave(
-#     filename = paste0(folder_path_plots, "DUIC_canuse_prevalence_DSK_", DATE, ".svg"),
-#     plot = plot_DUIC_DSK,
-#     bg = "white",
-#     width = 10,
-#     height = 6,
-#     dpi = 300,
-#     device = "svg"
-#   )
-# }
+# for DSK
+plot_DUIC_DSK <- aggregates_plot %>% filter (variable == "b) DUIC") %>%
+  ggplot(aes(x = as.factor(Welle), y = prop, color = Land, group = Land)) +
+  geom_line(size = 1, position = position_dodge(width = 0.05)) +
+  geom_point(size = 3, position = position_dodge(width = 0.05)) +  # Punkte leicht versetzen damit sch die KIs nicht überlappen
+  geom_errorbar(aes(ymin = lower, ymax = upper),
+                width = 0.04, alpha = 0.5, size = 0.4, position = position_dodge(width = 0.05))  + # Fehlerbalken versetzen
+  geom_label(aes(label = scales::percent(prop, accuracy = 0.1)),
+             size = 4,
+             label.size = 0.2,
+             fill = "white",
+             color = "black",
+             hjust = -0.2,
+             vjust = -1,
+             fontface = "bold",
+             position = position_dodge(width = 0.1)) +  # Labels versetzen
+  labs(title = "12-Monats-Prävalenz DUIC in DE und AT",
+       subtitle = paste("Vergleich vor und nach Legalisierung unter mindestens monatliche Cannabiskonsumierenden,\nexkl. ausschl. med. Konsum mit Rezept\n(DE, t0: n=393",
+                        ", t1: n=589",
+                        "; AT, t0: n=86",
+                        ", t1: n=92",")"),
+       y = "12-Monats-Prävalenz",
+       x = "",
+       color = "Land") +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1),
+                     breaks = seq(0, 0.4, by = 0.05), limits = c(0, 0.4), expand = c(0, 0)) +
+  scale_x_discrete(labels = welle_labels) +
+  scale_color_manual(values = colors_country) +
+  theme_gdocs(base_family = "Calibri", base_size = 10) +
+  theme(
+    text = element_text(color = "black"),
+    axis.text = element_text(color = "black"),
+    axis.title = element_text(color = "black"),
+    axis.ticks = element_line(color = "black"),
+    legend.text = element_text(color = "black"),
+    legend.title = element_text(color = "black"),
+    strip.text = element_text(color = "black"), 
+    plot.title = element_text(color = "black"),
+    plot.subtitle = element_text(color = "black"),
+    plot.caption = element_text(color = "black"),
+    panel.grid.minor = element_line(color = "gray80", linetype = "dotted", linewidth = 0.3),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank()
+  )
+
+#save
+if (dataexport) {
+  ggsave(
+    filename = paste0(folder_path_plots, "DUIC_canuse_prevalence_DSK_", DATE, ".tiff"),
+    plot = plot_DUIC_DSK,
+    width = 150,                   
+    height = 110,                  
+    units = "mm",                  
+    dpi = 400,
+    device = "tiff",
+    bg = "white"
+  )
+}
+
 
 
 
@@ -1028,6 +1035,54 @@ if (dataexport) {
     bg = "white"
   )
 }
+
+#for DSK
+#plot stacked bar chart
+fig1_w_DSK <- ggplot(pop_duicep_long %>% subset(grundgesamtheit != "DUIC episodes"), aes(x = grundgesamtheit, y = share, fill = can_freq)) +
+  geom_bar(stat = "identity", position = "fill", width = 0.7) +
+  geom_label(aes(x = grundgesamtheit, y = share, group = can_freq, label = scales::percent(share, accuracy = 1)),
+             position = position_stack(vjust = 0.5), color = "black", fill = alpha("white", 0.9), label.size = 0, size = 3.3) +
+  scale_fill_manual(values = blue_colors, labels = str_wrap(c("< monatlich", "monatlich", "wöchentlich", "(fast) tägich"), width = 12)) +
+  scale_x_discrete(labels = str_wrap(c("Cannabis- konsument:innen (n=1160)", "DUIC (–) Fahrten (n=392)", "DUIC (+) Fahrten (n=108)"), width = 10)) +
+  labs(
+    x = "",
+    y = "Anteil",
+    fill = "Konsumhäufigkeit",
+    title = str_wrap("Verteilung der Cannabiskonsument:innen, DUIC(–)- und DUIC(+)-Fahrten nach Konsumhäufigkeit", width = 50),
+    subtitle =  str_wrap("unter Personen mit DUIC in den letzten 30 Tagen in DE und AT (n=86), nach der Legalisierung", width = 100))+
+  scale_y_continuous(expand = c(0,0), limits = c(0,1), labels = scales::percent, breaks = seq(0, 1, by = 0.5)) +
+  theme_gdocs(base_family = "Calibri", base_size = 10) +
+  theme(
+    plot.title = element_text(color = "black"),
+    plot.subtitle = element_text(color = "black"),
+    panel.grid.minor = element_line(color = "gray80", linetype = "dotted"),
+    panel.grid.major.x = element_blank(),
+    legend.position = "right",
+    legend.title = element_text(color = "black"),
+    legend.text = element_text(color = "black"),
+    axis.text.x = element_text(color = "black", vjust = -0.3),
+    axis.title.y = element_text(color = "black"),
+    axis.text.y = element_text(color = "black"))
+#plot.background = element_rect(color = "black", fill = NA, linewidth = 0.5)
+# ) +
+# #legend in one row
+# guides(fill = guide_legend(nrow = 1, byrow = TRUE))
+
+# save plot as tiff
+if (dataexport) {
+  ggsave(
+    filename = paste0(folder_path_plots, "pop_duiconlyep_duicpsuep_w_DSK", DATE, ".tiff"),
+    plot = fig1_w_DSK,
+    width = 150,                   
+    height = 110,                  
+    units = "mm",                  
+    dpi = 400,
+    device = "tiff",
+    bg = "white"
+  )
+}
+
+
 
 # Sensititvity analysis: only German data
 
