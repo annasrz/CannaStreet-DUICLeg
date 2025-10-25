@@ -77,6 +77,7 @@ adolescents_data <- data.frame(
   Land = c("AT", "DE", "AT", "DE", "AT", "DE", "AT", "DE", "AT", "DE"),
   Jahr = c(2003, 2003, 2007, 2007, 2015, 2015, 2019, 2019, 2024, 2024),
   can_use_prev12M = c(9.3, 10.9, 6.2, 5.7, 9.2, 7.7, 11.3, 10.5, 6.1, 6.8),
+  n = c(rep(NA, 10)), #no sample sizes available
   cohort = "Adolescents"
 )
 
@@ -194,8 +195,6 @@ trend_MVA_pre <- ggplot(mva_data, aes(x = Jahr, y = value_per100k, color = Land)
     breaks = seq(2020, 2025, by = 1),
     limits = c(2020, 2024)
   ) +
-  #vertical line for t0 measurement Jahr = 2023
-  geom_vline(xintercept = 2023, linetype = "dashed", color = "gray40") +
   scale_color_manual(values = colors_country, labels = country_labels) +
   theme_gdocs(base_family = "Calibri", base_size = 9) +
   theme(
