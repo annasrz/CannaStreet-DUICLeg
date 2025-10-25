@@ -201,6 +201,8 @@ data_AT_2_sel <- data_AT_2 %>%
 #combine data
 data <- bind_rows(data_GER_1_sel, data_GER_2_sel, data_AT_1_sel, data_AT_2_sel)
 
+data$Land <- relevel(factor(data$Land), ref = "AT")
+data$Welle <- factor(data$Welle, levels = c(1, 2))
 
 # prepare variables
 #----------------------------------------------------------
@@ -613,9 +615,6 @@ if (dataexport) {
 }
 
 
-
-df_GSZB2$Land <- relevel(factor(df_GSZB2$Land), ref = "AT")
-df_GSZB2$Welle <- factor(df_GSZB2$Welle, levels = c(1, 2))
 
 #weighted DiD analysis for can use 12M
 glm_diff_in_diff <- glm(can_use_12M ~ Welle * Land, data = df_GSZB2, family = "binomial", weights = weights)
