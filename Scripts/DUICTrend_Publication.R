@@ -94,6 +94,18 @@ calculate_prevalence <- function(data, merkmal, weights, n_boot, conf_level = 0.
   ))
 }
 
+logisticPseudoR2s <- function(LogModel) {
+  dev <- LogModel$deviance
+  nullDev <- LogModel$null.deviance
+  modelN <- length(LogModel$fitted.values)
+  R.l <- 1 - dev / nullDev
+  R.cs <- 1- exp ( -(nullDev - dev) / modelN)
+  R.n <- R.cs / ( 1 - ( exp (-(nullDev / modelN))))
+  cat("Pseudo R^2 for logistic regression\n")
+  cat("Hosmer and Lemeshow R^2 ", round(R.l, 3), "\n")
+  cat("Cox and Snell R^2 ", round(R.cs, 3), "\n")
+  cat("Nagelkerke R^2 ", round(R.n, 3), "\n")
+}
 
 ## COLOR DEFINITIONS
 # ______________________________________________________________________________________________________________________
@@ -157,13 +169,13 @@ data_GER_1_sel <- data_GER_1 %>%
                 DUIC12m_full, DUIC12m_alone, DUIC12m_mixed, DUIC30d_full, DUIC30d_alone, DUIC30d_mixed, Welle, 
                 MEDICALUSE.01, MEDICALUSE.02, DUIC.MIXEDUSE_old, Land, DUIC.INTOX, DGURBA, sport_freq, sport_12M, fish_12M, SOURCE.1, gisd_5, AGS,
                 gambling_freq, alcohol_freq, tobacco_freq, DUIA, use_benzos, use_heroin)#, MILEAGE, starts_with("SPEEDING")) %>%
-  # mutate(MILEAGE = as_factor(MILEAGE), 
-  #        drives = case_when(MILEAGE == "Gar nicht" ~ FALSE,
-  #                           MILEAGE %in% c("Bis 5.000 km", "5.001 - 20.000 km", "Mehr als 20.000 km") ~ TRUE,
-  #                           TRUE ~ NA),
-  #        #speeding as factor
-  #        across(starts_with("SPEEDING"), as_factor)) %>%
-  # select(-MILEAGE)
+# mutate(MILEAGE = as_factor(MILEAGE), 
+#        drives = case_when(MILEAGE == "Gar nicht" ~ FALSE,
+#                           MILEAGE %in% c("Bis 5.000 km", "5.001 - 20.000 km", "Mehr als 20.000 km") ~ TRUE,
+#                           TRUE ~ NA),
+#        #speeding as factor
+#        across(starts_with("SPEEDING"), as_factor)) %>%
+# select(-MILEAGE)
 
 data_GER_2_sel <- data_GER_2 %>%
   select(-weights) %>%
@@ -173,12 +185,12 @@ data_GER_2_sel <- data_GER_2 %>%
          can_freq, can_use_12M, DUIC.MIXEDUSE, DUIC.MED, DRIVERLICENSE, CWM.PRE, DUIC, DUIC.FREQ.01M_wave1coding, DUIC.FREQ.01M_exact, DUIC.FREQ.12M_wave1coding,
          DUIC.FREQ.01M_wave2coding, DUIC.FREQ.12M_wave2coding, DUIC.FREQ.12M_exact, DUIC.MED, DUIC12m_full, DUIC12m_alone, DUIC12m_mixed, 
          DUIC30d_full, DUIC30d_alone, DUIC30d_mixed, Welle, MEDICALUSE.01, MEDICALUSE.02, Land, DUIC.INTOX, DGURBA, sport_12M, sport_freq, fish_12M, SOURCE.1, gisd_5, AGS,
-         gambling_freq, alcohol_freq, tobacco_freq, DUIA, use_benzos) #MILEAGE, starts_with("SPEEDING")) %>%
-  # mutate(MILEAGE = as_factor(MILEAGE),
-  #        drives = case_when(MILEAGE == "Gar nicht" ~ FALSE,
-  #                           MILEAGE %in% c("Bis 5.000 km", "5.001 - 20.000 km", "20.001 - 30.000 km", "mehr als 30.000 km") ~ TRUE,
-  #                           TRUE ~ NA)) %>%
-  # select(-MILEAGE)
+         gambling_freq, alcohol_freq, tobacco_freq, DUIA, use_benzos, use_heroin) #MILEAGE, starts_with("SPEEDING")) %>%
+# mutate(MILEAGE = as_factor(MILEAGE),
+#        drives = case_when(MILEAGE == "Gar nicht" ~ FALSE,
+#                           MILEAGE %in% c("Bis 5.000 km", "5.001 - 20.000 km", "20.001 - 30.000 km", "mehr als 30.000 km") ~ TRUE,
+#                           TRUE ~ NA)) %>%
+# select(-MILEAGE)
 
 data_AT_1_sel <- data_AT_1 %>%
   mutate(DUIC.MIXEDUSE_old = DUIC.MIXEDUSE, Land = "AT") %>%
@@ -238,7 +250,10 @@ data <- data %>%
          gambling_freq = haven::as_factor(gambling_freq)) %>%
   mutate(tobacco_use_12M = ifelse(tobacco_freq %in% c("(fast) täglich", "mindestens einmal pro Woche", "mindestens einmal im Monat", "seltener als einmal im Monat"), 1, 0),
          alcohol_use_12M = ifelse(alcohol_freq %in% c("(fast) täglich", "mindestens einmal pro Woche", "mindestens einmal im Monat", "seltener als einmal im Monat"), 1, 0),
-         gambling_12M = ifelse(gambling_freq %in% c("(fast) täglich", "mindestens einmal pro Woche", "mindestens einmal im Monat", "seltener als einmal im Monat"), 1, 0))
+         gambling_12M = ifelse(gambling_freq %in% c("(fast) täglich", "mindestens einmal pro Woche", "mindestens einmal im Monat", "seltener als einmal im Monat"), 1, 0),
+         use_benzos = as_factor(use_benzos),
+         use_heroin = as_factor(use_heroin),
+         use_sedatives = if_else(use_benzos == "ausgewählt" | use_heroin == "ausgewählt", 1, 0))
 
 
 #     alcohol_freq_num = case_when(
@@ -619,10 +634,19 @@ if (dataexport) {
 #weighted DiD analysis for can use 12M
 glm_diff_in_diff <- glm(can_use_12M ~ Welle * Land, data = df_GSZB2, family = "binomial", weights = weights)
 summary(glm_diff_in_diff)
+DiD_coef_canuse12m <- exp(cbind(OR = coef(glm_diff_in_diff), confint(glm_diff_in_diff)))
+logisticPseudoR2s(glm_diff_in_diff)
+glm_diff_in_diff_canuse_null <- glm(can_use_12M ~ 1, data = df_GSZB2, family = "binomial", weights = weights)
+anova(glm_diff_in_diff_canuse_null, glm_diff_in_diff, test = "Chisq")
 
 #unweighted DiD analysis for can use 12M
 glm_diff_in_diff_unweighted <- glm(can_use_12M ~ Welle * Land, data = df_GSZB2, family = "binomial")
 summary(glm_diff_in_diff_unweighted)
+DiD_coef_canuse12m_unweighted <- exp(cbind(OR = coef(glm_diff_in_diff_unweighted), confint(glm_diff_in_diff_unweighted)))
+logisticPseudoR2s(glm_diff_in_diff_unweighted)
+glm_diff_in_diff_canuse_null_unweighted <- glm(can_use_12M ~ 1, data = df_GSZB2, family = "binomial")
+anova(glm_diff_in_diff_canuse_null_unweighted, glm_diff_in_diff_unweighted, test = "Chisq")
+
 
 #adjusted DiD analysis for can use 12M with confounders (but no weights)
 #chi square tests for categorical variables
@@ -660,10 +684,10 @@ prop.table(table_alcohol_can, margin = 2)
 chisq.test(table_alcohol_can) # significant
 
 # # sport freq
-# table_sport_can <- table(df_GSZB2[df_GSZB2$Welle == 1,]$can_use_12, df_GSZB2[df_GSZB2$Welle == 1,]$sport_freq, useNA = "ifany")
-# table_sport_can
-# prop.table(table_sport_can, margin = 2)
-# chisq.test(table_sport_can) # significant
+table_sport_can <- table(df_GSZB2[df_GSZB2$Welle == 1,]$can_use_12, df_GSZB2[df_GSZB2$Welle == 1,]$sport_freq, useNA = "ifany")
+table_sport_can
+prop.table(table_sport_can, margin = 2)
+chisq.test(table_sport_can) # significant
 
 # gambling freq
 table_gambling_can <- table(df_GSZB2[df_GSZB2$Welle == 1,]$can_use_12, df_GSZB2[df_GSZB2$Welle == 1,]$gambling_freq, useNA = "ifany")
@@ -671,17 +695,22 @@ table_gambling_can
 prop.table(table_gambling_can, margin = 2)
 chisq.test(table_gambling_can) # significant
 
-
+# Sensitivity analysis 2: adjusted DiD analysis for can use 12M with sociodemographic confounders (but no weights)
 glm_diff_in_diff_adj_con <- glm(can_use_12M ~ agegroup + sex + edu_group + DGURBA + Welle * Land, data = df_GSZB2, family = "binomial")
 summary(glm_diff_in_diff_adj_con)
+vif(glm_diff_in_diff_adj_con)
+logisticPseudoR2s(glm_diff_in_diff_adj_con)
+df_GSZB2_complete <- df_GSZB2[complete.cases(df_GSZB2[, c("can_use_12M", "agegroup", "sex", "edu_group", "DGURBA")]), ]
+glm_diff_in_diff_canuse_null_unweighted_complete <- glm(can_use_12M ~ 1, data = df_GSZB2_complete, family = "binomial")
+anova(glm_diff_in_diff_canuse_null_unweighted_complete, glm_diff_in_diff_adj_con, test = "Chisq")
+DiD_coef_canuse12m_adjust_con <- exp(cbind(OR = coef(glm_diff_in_diff_adj_con), confint(glm_diff_in_diff_adj_con)))
 
-# adjusted DiD analysis for can use 12M with extended confounders (but no weights)
+# Sensitivity analysis 3: adjusted DiD analysis for can use 12M with sociodemographic and behavioral confounders (but no weights)
 glm_diff_in_diff_adj_con_ext <- glm(can_use_12M ~ agegroup + sex + edu_group + DGURBA + gambling_freq + alcohol_freq + sport_freq + Welle * Land, data = df_GSZB2, family = "binomial") #alcohol_freq + 
 summary(glm_diff_in_diff_adj_con_ext)
 vif(glm_diff_in_diff_adj_con_ext)
-
-# confidence intervals
-DiD_adj_coef_canuse12m <- exp(cbind(OR = coef(glm_diff_in_diff), confint(glm_diff_in_diff)))
+logisticPseudoR2s(glm_diff_in_diff_adj_con_ext)
+anova(glm_diff_in_diff_canuse_null_unweighted_complete, glm_diff_in_diff_adj_con_ext, test = "Chisq")
 # save as html table
 # if (dataexport) {
 #   library(kableExtra)
@@ -721,6 +750,8 @@ table_edu <- table(df_wave1$DUIC12m_full, df_wave1$edu_group)
 table_edu
 prop.table(table_edu, margin = 2)
 chisq.test(table_edu) # significant
+#fisher test because of small n's in some cells
+fisher.test(table_edu)
 
 # age groups
 table_age <- table(df_wave1$DUIC12m_full, df_wave1$agegroup)
@@ -782,18 +813,12 @@ prop.table(table_DUIA, margin = 2)
 chisq.test(table_DUIA) # significant
 
 #sedatives
-df_wave1 <- df_wave1 %>%
-  mutate(
-    use_benzos = as_factor(use_benzos),
-    use_heroin = as_factor(use_heroin),
-    use_sedatives = if_else(
-      use_benzos == "ausgewählt" | use_heroin == "ausgewählt", 1, 0))
-    
-    
 table_sedatives <- table(df_wave1$DUIC12m_full, df_wave1$use_sedatives)
 table_sedatives
 prop.table(table_sedatives, margin = 2)
 chisq.test(table_sedatives) # significant, but no data in Austria in Welle 1 -> cannot be used as confounder
+#correlation with alc freq
+#table_sedatives_alc <- prop.table(table(df_wave1$use_sedatives, df_wave1$alcohol_freq), margin = 2)
 
 # DID analysis for DUIC full prevalence
 
@@ -802,40 +827,36 @@ df_DUIC_full$Welle <- factor(df_DUIC_full$Welle, levels = c(1, 2))  # Welle 1 al
 
 DiD_unadjusted <- glm(DUIC12m_full ~ Welle * Land, data = df_DUIC_full, family = "binomial")
 summary(DiD_unadjusted)
-
-# confidence intervals
+logisticPseudoR2s(DiD_unadjusted)
+DiD_null <- glm(DUIC12m_full ~ 1, data = df_DUIC_full, family = "binomial")
+anova(DiD_null, DiD_unadjusted, test = "Chisq")
 DiD_unadj_coef <- exp(cbind(OR = coef(DiD_unadjusted), confint(DiD_unadjusted)))
-#save as html table
-# if (dataexport) {
-#   library(kableExtra)
-#   kable(DiD_unadj_coef, format = "html", digits = 2, caption = "Unadjusted DiD Analysis for DUIC Full Prevalence") %>%
-#     kable_styling("striped", full_width = F) %>%
-#     save_kable(file = paste0(folder_path_tables, "DiD_unadjusted_DUIC_full_", DATE, ".html"))
-# }
+
 
 # Adjusted DiD analysis 1 (only covariates)
 DiD_adjusted <- glm(DUIC12m_full ~ DRIVERLICENSE_bin + agegroup + sex + edu_group + Welle * Land, data = df_DUIC_full, family = "binomial")
 summary(DiD_adjusted)
-
-# confidence intervals
-DiD_adj_coef <- exp(cbind(OR = coef(DiD_adjusted), confint(DiD_adjusted)))
-if (dataexport) {
-  kable(DiD_adj_coef, format = "html", digits = 2, caption = "Adjusted DiD Analysis for DUIC Full Prevalence") %>%
-    kable_styling("striped", full_width = F) %>%
-    save_kable(file = paste0(folder_path_tables, "DiD_adjusted_DUIC_full_", DATE, ".html"))
-}
-
-#VIF adjusted model
-vif_values <- vif(DiD_adjusted)
+logisticPseudoR2s(DiD_adjusted)
+df_DUIC12m_full_complete <- df_DUIC_full[complete.cases(df_DUIC_full[, c("agegroup", "sex", "edu_group")]), ]
+DiD_null_complete <- glm(DUIC12m_full ~ 1, data = df_DUIC12m_full_complete, family = "binomial")
+anova(DiD_null_complete, DiD_adjusted, test = "Chisq")
 vif(DiD_adjusted)
 
-# Adjusted DiD analysis 2 (only covariates + possible confounders)
-DiD_adjusted_2 <- glm(DUIC12m_full ~ DRIVERLICENSE_bin + agegroup + sex + edu_group + alcohol_freq + gambling_freq + DUIA12M + Welle * Land, data = df_DUIC_full, family = "binomial")
+# # confidence intervals
+# DiD_adj_coef <- exp(cbind(OR = coef(DiD_adjusted), confint(DiD_adjusted)))
+# if (dataexport) {
+#   kable(DiD_adj_coef, format = "html", digits = 2, caption = "Adjusted DiD Analysis for DUIC Full Prevalence") %>%
+#     kable_styling("striped", full_width = F) %>%
+#     save_kable(file = paste0(folder_path_tables, "DiD_adjusted_DUIC_full_", DATE, ".html"))
+# }
+
+
+# Adjusted DiD analysis 2 (sociademographic + behavioral covariates)
+DiD_adjusted_2 <- glm(DUIC12m_full ~ DRIVERLICENSE_bin + agegroup + sex + edu_group + alcohol_freq + gambling_freq + Welle * Land, data = df_DUIC_full, family = "binomial")
 summary(DiD_adjusted_2)
-
-vif_values_2 <- vif(DiD_adjusted_2)
-
-
+vif(DiD_adjusted_2)
+logisticPseudoR2s(DiD_adjusted_2)
+anova(DiD_null_complete, DiD_adjusted_2, test = "Chisq")
 
 
 
@@ -1022,6 +1043,9 @@ DiD_DUIC30d_unadj_coef <- exp(cbind(OR = coef(DiD_DUIC30d_unadjusted), confint(D
 # Adjusted DiD analysis
 DiD_DUIC30d_adjusted <- glm(DUIC30d_full ~ DRIVERLICENSE_bin + agegroup + sex + edu_group + Welle * Land, data = df_DUIC_full, family = "binomial")
 summary(DiD_DUIC30d_adjusted)
+logisticPseudoR2s(DiD_DUIC30d_adjusted)
+DiD_DUIC30d_null <- glm(DUIC30d_full ~ 1, data = df_DUIC12m_full_complete, family = "binomial")
+anova(DiD_DUIC30d_null, DiD_DUIC30d_adjusted, test = "Chisq")
 
 # confidence intervals
 DiD_DUIC30d_adj_coef <- exp(cbind(OR = coef(DiD_DUIC30d_adjusted), confint(DiD_DUIC30d_adjusted)))
