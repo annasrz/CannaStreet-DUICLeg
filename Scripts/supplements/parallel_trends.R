@@ -58,6 +58,22 @@ country_labels <- c(
   "DE" = "Germany"
 )
 
+# FUNCTIONS
+# ______________________________________________________________________________________________________________________
+logisticPseudoR2s <- function(LogModel) {
+  dev <- LogModel$deviance
+  nullDev <- LogModel$null.deviance
+  modelN <- length(LogModel$fitted.values)
+  R.l <- 1 - dev / nullDev
+  R.cs <- 1- exp ( -(nullDev - dev) / modelN)
+  R.n <- R.cs / ( 1 - ( exp (-(nullDev / modelN))))
+  cat("Pseudo R^2 for logistic regression\n")
+  cat("Hosmer and Lemeshow R^2 ", round(R.l, 3), "\n")
+  cat("Cox and Snell R^2 ", round(R.cs, 3), "\n")
+  cat("Nagelkerke R^2 ", round(R.n, 3), "\n")
+}
+
+
 # DATA
 # ______________________________________________________________________________________________________________________
 
@@ -234,14 +250,17 @@ mva_data_mod <- mva_data %>%
   filter(Jahr < 2024 & Jahr >= 2020) %>%
   mutate(Land = factor(Land, levels = c("DE", "AT")),
          Jahr_c = Jahr - min(Jahr)) #center year variable
-         
+
 mva_poisson <- glm(value ~ Jahr_c * Land + offset(log(pop_value)),
-                            family = poisson(link = "log"),
-                            data = mva_data_mod)
-         
+                   family = poisson(link = "log"),
+                   data = mva_data_mod)
+
 summary(mva_poisson)
 # dispersion test
 sum(residuals(mva_poisson, type="pearson")^2) / mva_poisson$df.residual # should be close to 1 for poisson (1.18 - acceptable)
+#get incidence rate ratios
+exp(cbind(IRR = coef(mva_poisson), confint(mva_poisson)))
+
 
 # cannabis use 
 adults_data_mod <- adults_data %>%
@@ -252,6 +271,11 @@ adults_data_mod <- adults_data %>%
   )
 
 can_use_mod <- glm(cbind(can_use, n - can_use) ~ Jahr_c * Land,
-                     family = binomial(link = "logit"),
-                     data = adults_data_mod)
+                   family = quasibinomial(link = "logit"),
+                   data = adults_data_mod)
 summary(can_use_mod)
+exp(cbind(OR = coef(can_use_mod), confint(can_use_mod)))
+#fit
+logisticPseudoR2s(can_use_mod)
+sum(residuals(can_use_mod, type="pearson")^2) / df.residual(can_use_mod)
+sum(residuals(can_use_mod, type="deviance")^2) / df.residual(can_use_mod)
