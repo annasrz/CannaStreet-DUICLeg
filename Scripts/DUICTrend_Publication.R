@@ -639,6 +639,16 @@ logisticPseudoR2s(glm_diff_in_diff)
 glm_diff_in_diff_canuse_null <- glm(can_use_12M ~ 1, data = df_GSZB2, family = "binomial", weights = weights)
 anova(glm_diff_in_diff_canuse_null, glm_diff_in_diff, test = "Chisq")
 
+#glm diff in diff only germany 
+glm_diff_in_diff_GER <- glm(can_use_12M ~ Welle, data = df_GSZB2[df_GSZB2$Land == "DE", ], family = "binomial", weights = weights)
+summary(glm_diff_in_diff_GER)
+DiD_coef_canuse12m_GER <- exp(cbind(OR = coef(glm_diff_in_diff_GER), confint(glm_diff_in_diff_GER)))
+logisticPseudoR2s(glm_diff_in_diff_GER)
+glm_diff_in_diff_canuse_null_GER <- glm(can_use_12M ~ 1, data = df_GSZB2[df_GSZB2$Land == "DE", ], family = "binomial", weights = weights)
+anova(glm_diff_in_diff_canuse_null_GER, glm_diff_in_diff_GER, test = "Chisq")
+
+
+
 #unweighted DiD analysis for can use 12M
 glm_diff_in_diff_unweighted <- glm(can_use_12M ~ Welle * Land, data = df_GSZB2, family = "binomial")
 summary(glm_diff_in_diff_unweighted)
