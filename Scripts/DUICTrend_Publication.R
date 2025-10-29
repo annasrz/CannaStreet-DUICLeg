@@ -493,6 +493,24 @@ mischkonsum_weights <- c(
   "Immer neben Cannabis auch Alkohol oder andere Drogen konsumiert" = 0
 )
 
+# sensitivity analysis
+# alternative mischkonsum weights
+mischkonsum_weights_alt1 <- c(
+  "Ausschließlich Cannabis konsumiert" = 1,
+  "Gelegentlich neben Cannabis auch Alkohol oder andere Drogen konsumiert" = 0.6,
+  "Meistens neben Cannabis auch Alkohol oder andere Drogen konsumiert" = 0.4,
+  "Immer neben Cannabis auch Alkohol oder andere Drogen konsumiert" = 0
+)
+
+mischkonsum_weights_alt2 <- c(
+  "Ausschließlich Cannabis konsumiert" = 1,
+  "Gelegentlich neben Cannabis auch Alkohol oder andere Drogen konsumiert" = 0.9,
+  "Meistens neben Cannabis auch Alkohol oder andere Drogen konsumiert" = 0.1,
+  "Immer neben Cannabis auch Alkohol oder andere Drogen konsumiert" = 0
+)
+
+
+
 
 DUIC30_df <- df_GSZB2 %>%
   filter(
@@ -518,6 +536,17 @@ DUIC30_df <- df_GSZB2 %>%
   mutate(
     DUIC_only_freq_30_num = DUIC_freq_30_num * mischkonsum_weights[DUIC.MIXEDUSE],
     DUIC_psu_freq_30_num = DUIC_freq_30_num * (1 - mischkonsum_weights[DUIC.MIXEDUSE]
+    ),
+    DUIC_only_freq_30_num_alt1 = DUIC_freq_30_num * mischkonsum_weights_alt1[DUIC.MIXEDUSE],
+    DUIC_only_freq_30_num_alt2 = DUIC_freq_30_num * mischkonsum_weights_alt2[DUIC.MIXEDUSE],
+    DUIC_psu_freq_30_num_alt1 = DUIC_freq_30_num * (1 - mischkonsum_weights_alt1[DUIC.MIXEDUSE]
+    ),
+    DUIC_psu_freq_30_num_alt2 = DUIC_freq_30_num * (1 - mischkonsum_weights_alt2[DUIC.MIXEDUSE]
+    ),
+    analyseDUIC = ifelse(
+      DUIC30d_full == 1 & !is.na(DUIC_freq_30_num) & !is.na(DUIC_only_freq_30_num)
+      & !is.na(DUIC_psu_freq_30_num) & DUIC_freq_30_num < 99,
+      1, 0
     )) %>%
   filter(!is.na(DUIC_only_freq_30_num), 
          !is.na(DUIC_psu_freq_30_num)) 
@@ -531,6 +560,7 @@ table(DUIC30_df$agegroup, useNA = "ifany")
 table(DUIC30_df$DGURBA, useNA = "ifany")
 table(DUIC30_df$can_freq, useNA = "ifany")
 table(DUIC30_df$DRIVERLICENSE_bin, useNA = "ifany")
+
 # unweighted percentages
 prop.tab <- function(var) {
   tab <- table(DUIC30_df[[var]], useNA = "ifany")
@@ -1130,12 +1160,14 @@ if (dataexport) {
 # DUIC episodes by cannabis use frequency and polysubstance use
 # ==================================================================================================================================================================
 
+
+# new df as also non DUIC participants are needed (but not for sample size calculations)
 DUIC30_df <- df_GSZB2 %>%
   filter(
     !(MEDICALUSE.01 == "Ausschließlich für medizinische Zwecke" &
         MEDICALUSE.02 == "Ja, mir wurde medizinisches Cannabis ärztlich verschrieben (bezahlt durch Krankenkasse oder als Selbstzahler)"),
     can_freq != "gar nicht",
-    #  DUIC30d_full == 1,
+#    DUIC30d_full == 1,
     Welle == 2
   ) %>%
   mutate(
@@ -1148,11 +1180,19 @@ DUIC30_df <- df_GSZB2 %>%
       DUIC.FREQ.01M_wave2coding == "Mehr als 15 mal" ~ DUIC.FREQ.01M_exact,
       TRUE ~ NA_real_
     )) %>%
-  #filter(DUIC_freq_30_num < 99 | is.na(DUIC_freq_30_num)) %>% 
+  filter(DUIC_freq_30_num < 99) %>% 
+  filter(!is.na(DUIC_freq_30_num)) %>%
   #add new variable for the approx. DUIC episodes by cannabis only und psu
   mutate(
     DUIC_only_freq_30_num = DUIC_freq_30_num * mischkonsum_weights[DUIC.MIXEDUSE],
-    DUIC_psu_freq_30_num = DUIC_freq_30_num * (1 - mischkonsum_weights[DUIC.MIXEDUSE]),
+    DUIC_psu_freq_30_num = DUIC_freq_30_num * (1 - mischkonsum_weights[DUIC.MIXEDUSE]
+    ),
+    DUIC_only_freq_30_num_alt1 = DUIC_freq_30_num * mischkonsum_weights_alt1[DUIC.MIXEDUSE],
+    DUIC_only_freq_30_num_alt2 = DUIC_freq_30_num * mischkonsum_weights_alt2[DUIC.MIXEDUSE],
+    DUIC_psu_freq_30_num_alt1 = DUIC_freq_30_num * (1 - mischkonsum_weights_alt1[DUIC.MIXEDUSE]
+    ),
+    DUIC_psu_freq_30_num_alt2 = DUIC_freq_30_num * (1 - mischkonsum_weights_alt2[DUIC.MIXEDUSE]
+    ),
     analyseDUIC = ifelse(
       DUIC30d_full == 1 & !is.na(DUIC_freq_30_num) & !is.na(DUIC_only_freq_30_num)
       & !is.na(DUIC_psu_freq_30_num) & DUIC_freq_30_num < 99,
@@ -1177,13 +1217,21 @@ sum_duicep <- DUIC30_df %>%
     n_users = n(),
     n_duicep = sum(DUIC_freq_30_num[analyseDUIC == 1], na.rm = TRUE), 
     n_duicep_only = sum(DUIC_only_freq_30_num[analyseDUIC == 1], na.rm = TRUE),
-    n_duic_psu = sum(DUIC_psu_freq_30_num[analyseDUIC == 1], na.rm = TRUE)
+    n_duic_psu = sum(DUIC_psu_freq_30_num[analyseDUIC == 1], na.rm = TRUE),
+    n_duicep_only_alt1 = sum(DUIC_only_freq_30_num_alt1[analyseDUIC == 1], na.rm = TRUE),
+    n_duic_psu_alt1 = sum(DUIC_psu_freq_30_num_alt1[analyseDUIC == 1], na.rm = TRUE),
+    n_duicep_only_alt2 = sum(DUIC_only_freq_30_num_alt2[analyseDUIC == 1], na.rm = TRUE),
+    n_duic_psu_alt2 = sum(DUIC_psu_freq_30_num_alt2[analyseDUIC == 1], na.rm = TRUE)
   ) %>%
   mutate(
     share_users = n_users / sum(n_users),
     share_duicep = n_duicep / sum(n_duicep),
     share_duicep_only = n_duicep_only / sum(n_duicep_only),
-    share_duic_psu = n_duic_psu / sum(n_duic_psu)
+    share_duic_psu = n_duic_psu / sum(n_duic_psu),
+    share_duicep_only_alt1 = n_duicep_only_alt1 / sum(n_duicep_only_alt1),
+    share_duic_psu_alt1 = n_duic_psu_alt1 / sum(n_duic_psu_alt1),
+    share_duicep_only_alt2 = n_duicep_only_alt2 / sum(n_duicep_only_alt2),
+    share_duic_psu_alt2 = n_duic_psu_alt2 / sum(n_duic_psu_alt2)
   ) %>%
   ungroup() 
 
@@ -1269,52 +1317,52 @@ if (dataexport) {
 
 #for DSK
 #plot stacked bar chart
-fig1_w_DSK <- ggplot(pop_duicep_long %>% subset(grundgesamtheit != "DUIC episodes"), aes(x = grundgesamtheit, y = share, fill = can_freq)) +
-  geom_bar(stat = "identity", position = "fill", width = 0.7) +
-  geom_label(aes(x = grundgesamtheit, y = share, group = can_freq, label = scales::percent(share, accuracy = 1)),
-             position = position_stack(vjust = 0.5), color = "black", fill = alpha("white", 0.9), label.size = 0, size = 3.3) +
-  scale_fill_manual(values = blue_colors, labels = str_wrap(c("< monatlich", "monatlich", "wöchentlich", "(fast) tägich"), width = 12)) +
-  scale_x_discrete(labels = str_wrap(c("Cannabis- konsument:innen (n=1160)", "DUIC (–) Fahrten (n=392)", "DUIC (+) Fahrten (n=108)"), width = 10)) +
-  labs(
-    x = "",
-    y = "Anteil",
-    fill = "Konsumhäufigkeit",
-    title = str_wrap("Verteilung der Cannabiskonsument:innen, DUIC(–)- und DUIC(+)-Fahrten nach Konsumhäufigkeit", width = 50),
-    subtitle =  str_wrap("unter Personen mit DUIC in den letzten 30 Tagen in DE und AT (n=86), nach der Legalisierung", width = 100))+
-  scale_y_continuous(expand = c(0,0), limits = c(0,1), labels = scales::percent, breaks = seq(0, 1, by = 0.5)) +
-  theme_gdocs(base_family = "Aptos", base_size = 10) +
-  theme(
-    plot.title = element_text(color = "black"),
-    plot.subtitle = element_text(color = "black"),
-    panel.grid.minor = element_line(color = "gray80", linetype = "dotted"),
-    panel.grid.major.x = element_blank(),
-    legend.position = "right",
-    legend.title = element_text(color = "black"),
-    legend.text = element_text(color = "black"),
-    axis.text.x = element_text(color = "black", vjust = -0.3),
-    axis.title.y = element_text(color = "black"),
-    axis.text.y = element_text(color = "black"))
+# fig1_w_DSK <- ggplot(pop_duicep_long %>% subset(grundgesamtheit != "DUIC episodes"), aes(x = grundgesamtheit, y = share, fill = can_freq)) +
+#   geom_bar(stat = "identity", position = "fill", width = 0.7) +
+#   geom_label(aes(x = grundgesamtheit, y = share, group = can_freq, label = scales::percent(share, accuracy = 1)),
+#              position = position_stack(vjust = 0.5), color = "black", fill = alpha("white", 0.9), label.size = 0, size = 3.3) +
+#   scale_fill_manual(values = blue_colors, labels = str_wrap(c("< monatlich", "monatlich", "wöchentlich", "(fast) tägich"), width = 12)) +
+#   scale_x_discrete(labels = str_wrap(c("Cannabis- konsument:innen (n=1160)", "DUIC (–) Fahrten (n=392)", "DUIC (+) Fahrten (n=108)"), width = 10)) +
+#   labs(
+#     x = "",
+#     y = "Anteil",
+#     fill = "Konsumhäufigkeit",
+#     title = str_wrap("Verteilung der Cannabiskonsument:innen, DUIC(–)- und DUIC(+)-Fahrten nach Konsumhäufigkeit", width = 50),
+#     subtitle =  str_wrap("unter Personen mit DUIC in den letzten 30 Tagen in DE und AT (n=86), nach der Legalisierung", width = 100))+
+#   scale_y_continuous(expand = c(0,0), limits = c(0,1), labels = scales::percent, breaks = seq(0, 1, by = 0.5)) +
+#   theme_gdocs(base_family = "Aptos", base_size = 10) +
+#   theme(
+#     plot.title = element_text(color = "black"),
+#     plot.subtitle = element_text(color = "black"),
+#     panel.grid.minor = element_line(color = "gray80", linetype = "dotted"),
+#     panel.grid.major.x = element_blank(),
+#     legend.position = "right",
+#     legend.title = element_text(color = "black"),
+#     legend.text = element_text(color = "black"),
+#     axis.text.x = element_text(color = "black", vjust = -0.3),
+#     axis.title.y = element_text(color = "black"),
+#     axis.text.y = element_text(color = "black"))
 #plot.background = element_rect(color = "black", fill = NA, linewidth = 0.5)
 # ) +
 # #legend in one row
 # guides(fill = guide_legend(nrow = 1, byrow = TRUE))
 
 # save plot as tiff
-if (dataexport) {
-  ggsave(
-    filename = paste0(folder_path_plots, "pop_duiconlyep_duicpsuep_w_DSK", DATE, ".tiff"),
-    plot = fig1_w_DSK,
-    width = 159,                   
-    height = 110,                  
-    units = "mm",                  
-    dpi = 400,
-    device = "tiff",
-    bg = "white"
-  )
-}
+# if (dataexport) {
+#   ggsave(
+#     filename = paste0(folder_path_plots, "pop_duiconlyep_duicpsuep_w_DSK", DATE, ".tiff"),
+#     plot = fig1_w_DSK,
+#     width = 159,                   
+#     height = 110,                  
+#     units = "mm",                  
+#     dpi = 400,
+#     device = "tiff",
+#     bg = "white"
+#   )
+# }
 
 
-
+# ==================================================================================================================================================================
 # Sensititvity analysis: only German data
 
 DUIC30_df_GER <- df_GSZB2 %>%
@@ -1465,6 +1513,173 @@ if (dataexport) {
     dpi = 300,
     bg = "white",
     device = "svg"
+  )
+}
+
+
+# ==================================================================================================================================================================
+# Sensititvity analysis: alternative mischkonsum weights 1
+# ==================================================================================================================================================================
+sum(sum_duicep$n_duicep)
+sum(sum_duicep$n_duicep_only_alt1)
+sum(sum_duicep$n_duic_psu_alt1)
+
+sum(sum_duicep$n_duicep_only_alt1)/sum(sum_duicep$n_duicep)
+sum(sum_duicep$n_duic_psu_alt1)/sum(sum_duicep$n_duicep)
+
+
+pop_duicep_long_alt1 <- sum_duicep %>%
+  pivot_longer(
+    cols = c(share_users, share_duicep, share_duicep_only_alt1, share_duic_psu_alt1),
+    names_to = "grundgesamtheit",
+    values_to = "share"
+  ) %>%
+  mutate(
+    grundgesamtheit = dplyr::recode(grundgesamtheit,
+                                    "share_users" = "Cannabis users",
+                                    "share_duicep" = "DUIC episodes",
+                                    "share_duicep_only_alt1" = "DUIC-only episodes",
+                                    "share_duic_psu_alt1" = "DUIC-PSU episodes"),
+    grundgesamtheit = factor(grundgesamtheit, levels = c("Cannabis users",
+                                                         "DUIC episodes",
+                                                         "DUIC-only episodes",
+                                                         "DUIC-PSU episodes"),
+                             labels = c("Cannabis users", 
+                                        "DUIC episodes",
+                                        "DUIC(–) episodes",
+                                        "DUIC(+) episodes")),
+    can_freq = dplyr::recode(can_freq,
+                             `seltener als einmal im Monat` = "Less than monthly",
+                             `mindestens einmal im Monat` = "Monthly",
+                             `mindestens einmal pro Woche` = "Weekly",
+                             `(fast) täglich` = "(Almost) daily"),
+    can_freq = factor(can_freq, levels = c("Less than monthly", "Monthly", "Weekly", "(Almost) daily"))
+  )
+
+#plot stacked bar chart
+fig1_w_alt1 <- ggplot(pop_duicep_long_alt1 %>% subset(grundgesamtheit != "DUIC episodes"), aes(x = grundgesamtheit, y = share, fill = can_freq)) +
+  geom_bar(stat = "identity", position = "fill", width = 0.7) +
+  geom_label(aes(x = grundgesamtheit, y = share, group = can_freq, label = scales::percent(share, accuracy = 1)),
+             position = position_stack(vjust = 0.5), color = "black", fill = alpha("white", 0.9), label.size = 0, size = 3.3) +
+  scale_fill_manual(values = blue_colors, labels = str_wrap(c("Less than monthly", "Monthly", "Weekly", "(Almost) daily"), width = 10)) +
+  scale_x_discrete(labels = str_wrap(c("Cannabis users", "DUIC(–) episodes", "DUIC(+) episodes"), width = 10)) +
+  labs(
+    x = "",
+    y = "Share",
+    fill = "Cannabis use frequency",
+    title = "",
+  ) +
+  scale_y_continuous(expand = c(0,0), limits = c(0,1), labels = scales::percent, breaks = seq(0, 1, by = 0.5)) +
+  theme_gdocs(base_family = "Calibri", base_size = 10) +
+  theme(
+    panel.grid.minor = element_line(color = "gray80", linetype = "dotted"),
+    panel.grid.major.x = element_blank(),
+    legend.position = "bottom",
+    legend.title = element_text(color = "black"),
+    legend.text = element_text(color = "black"),
+    axis.text.x = element_text(color = "black", vjust = -0.3),
+    axis.title.y = element_text(color = "black"),
+    axis.text.y = element_text(color = "black"),
+    #plot.background = element_rect(color = "black", fill = NA, linewidth = 0.5)
+  ) +
+  #legend in one row
+  guides(fill = guide_legend(nrow = 1, byrow = TRUE))
+
+# save plot as tiff
+if (dataexport) {
+  ggsave(
+    filename = paste0(folder_path_plots, "pop_duiconlyep_duicpsuep_w_alt1_", DATE, ".tiff"),
+    plot = fig1_w_alt1,
+    width = 107,                   
+    height = 110,                  
+    units = "mm",                  
+    dpi = 400,
+    device = "tiff",
+    bg = "white"
+  )
+}
+
+
+
+
+# ==================================================================================================================================================================
+# Sensititvity analysis: alternative mischkonsum weights 2
+# ==================================================================================================================================================================
+sum(sum_duicep$n_duicep_only_alt2)
+sum(sum_duicep$n_duic_psu_alt2)
+
+sum(sum_duicep$n_duicep_only_alt2)/sum(sum_duicep$n_duicep)
+sum(sum_duicep$n_duic_psu_alt2)/sum(sum_duicep$n_duicep)
+
+pop_duicep_long_alt2 <- sum_duicep %>%
+  pivot_longer(
+    cols = c(share_users, share_duicep, share_duicep_only_alt2, share_duic_psu_alt2),
+    names_to = "grundgesamtheit",
+    values_to = "share"
+  ) %>%
+  mutate(
+    grundgesamtheit = dplyr::recode(grundgesamtheit,
+                                    "share_users" = "Cannabis users",
+                                    "share_duicep" = "DUIC episodes",
+                                    "share_duicep_only_alt2" = "DUIC-only episodes",
+                                    "share_duic_psu_alt2" = "DUIC-PSU episodes"),
+    grundgesamtheit = factor(grundgesamtheit, levels = c("Cannabis users",
+                                                         "DUIC episodes",
+                                                         "DUIC-only episodes",
+                                                         "DUIC-PSU episodes"),
+                             labels = c("Cannabis users", 
+                                        "DUIC episodes",
+                                        "DUIC(–) episodes",
+                                        "DUIC(+) episodes")),
+    can_freq = dplyr::recode(can_freq,
+                             `seltener als einmal im Monat` = "Less than monthly",
+                             `mindestens einmal im Monat` = "Monthly",
+                             `mindestens einmal pro Woche` = "Weekly",
+                             `(fast) täglich` = "(Almost) daily"),
+    can_freq = factor(can_freq, levels = c("Less than monthly", "Monthly", "Weekly", "(Almost) daily"))
+  )
+
+
+#plot stacked bar chart
+fig1_w_alt2 <- ggplot(pop_duicep_long_alt2 %>% subset(grundgesamtheit != "DUIC episodes"), aes(x = grundgesamtheit, y = share, fill = can_freq)) +
+  geom_bar(stat = "identity", position = "fill", width = 0.7) +
+  geom_label(aes(x = grundgesamtheit, y = share, group = can_freq, label = scales::percent(share, accuracy = 1)),
+             position = position_stack(vjust = 0.5), color = "black", fill = alpha("white", 0.9), label.size = 0, size = 3.3) +
+  scale_fill_manual(values = blue_colors, labels = str_wrap(c("Less than monthly", "Monthly", "Weekly", "(Almost) daily"), width = 10)) +
+  scale_x_discrete(labels = str_wrap(c("Cannabis users", "DUIC(–) episodes", "DUIC(+) episodes"), width = 10)) +
+  labs(
+    x = "",
+    y = "Share",
+    fill = "Cannabis use frequency",
+    title = "",
+  ) +
+  scale_y_continuous(expand = c(0,0), limits = c(0,1), labels = scales::percent, breaks = seq(0, 1, by = 0.5)) +
+  theme_gdocs(base_family = "Calibri", base_size = 10) +
+  theme(
+    panel.grid.minor = element_line(color = "gray80", linetype = "dotted"),
+    panel.grid.major.x = element_blank(),
+    legend.position = "bottom",
+    legend.title = element_text(color = "black"),
+    legend.text = element_text(color = "black"),
+    axis.text.x = element_text(color = "black", vjust = -0.3),
+    axis.title.y = element_text(color = "black"),
+    axis.text.y = element_text(color = "black"),
+    #plot.background = element_rect(color = "black", fill = NA, linewidth = 0.5)
+  ) +
+  #legend in one row
+  guides(fill = guide_legend(nrow = 1, byrow = TRUE))
+
+# save plot as tiff
+if (dataexport) {
+  ggsave(
+    filename = paste0(folder_path_plots, "pop_duiconlyep_duicpsuep_w_alt2_", DATE, ".tiff"),
+    plot = fig1_w_alt2,
+    width = 107,                   
+    height = 110,                  
+    units = "mm",                  
+    dpi = 400,
+    device = "tiff",
+    bg = "white"
   )
 }
 
