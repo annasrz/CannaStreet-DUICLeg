@@ -83,8 +83,7 @@ adults_data <- data.frame(
   Land = c(rep("AT", 3), rep("DE", 6)),
   Jahr = c(2008, 2015, 2020, 2009, 2012, 2015, 2018, 2021, 2024),
   can_use_prev12M = c(3.5, 6.4, 6.3, 4.8, 4.5, 6.1, 7.1, 8.8, 9.8),
-  n = c(3000, 3000, 4650, 8030, 9061, 9204, 9101, 8986, NA),
-  #dummy values for n in AT that are smaller than probabable n -> increases variance, GER: actual sample sizes
+  n = c(3761, 3477, 4650, 8030, 9061, 9204, 9101, 8986, NA),
   cohort = "Adults"
 )
 
@@ -113,13 +112,13 @@ mva_AT <- data.frame(
 pop_AT <- data.frame(
   Land = "AT",
   Jahr = c(2020, 2021, 2022, 2023, 2024),
-  pop_value = c(8929910, 8932664, 8978929, 9104772, 9158750)
-)
+  pop_value = c(8901064, 8932664, 8978929, 9104772, 9158750) #https://www.statistik.at/fileadmin/user_upload/Demo-JB-2023_Web-barrierefrei.pdf (Übersicht 1), the number of inhabitants as of January 1 of the respective year (i.e., 01.01.2020 for 2020)
+) #2024 from https://www.statistik.at/statistiken/bevoelkerung-und-soziales/bevoelkerung/bevoelkerungsstand/bevoelkerung-zu-jahres-/-quartalsanfang
 
 pop_DE <- data.frame(
   Land = "DE",
   Jahr = c(2019, 2020, 2021, 2022, 2023, 2024),
-  pop_value = c(83019213, 83166711, 83155031, 83237124 , 83118501, 83456045)
+  pop_value = c(83019213, 83166711, 83155031, 83237124 , 83118501, 83456045) #https://www-genesis.destatis.de/datenbank/online/statistic/12411/table/12411-0001, the number of inhabitants as of December 31 of previous year (i.e., 31.12.2018 for 2020)
 )
 
 pop <- rbind(pop_AT, pop_DE)
@@ -186,13 +185,13 @@ trend_canuse_pre <- ggplot(cannabis_use_data, aes(x = Jahr, y = can_use_prev12M,
 #save as tiff
 if (dataexport) {
   ggsave(
-    filename = paste0(folder_path_plots, "trend_canuse_pre_", DATE, ".tiff"),
+    filename = paste0(folder_path_plots, "trend_canuse_pre_", DATE, ".svg"),
     plot = trend_canuse_pre,
     width = 107,                   
     height = 90,                  
     units = "mm",                  
     dpi = 400,
-    device = "tiff"
+    device = "svg"
   )
 }
 
@@ -230,13 +229,13 @@ trend_MVA_pre <- ggplot(mva_data, aes(x = Jahr, y = value_per100k, color = Land)
 
 if (dataexport) {
   ggsave(
-    filename = paste0(folder_path_plots, "trend_MVA_pre_", DATE, ".tiff"),
+    filename = paste0(folder_path_plots, "trend_MVA_pre_", DATE, ".svg"),
     plot = trend_MVA_pre,
     width = 107,                   
     height = 90,                  
     units = "mm",                  
     dpi = 400,
-    device = "tiff"
+    device = "svg"
   )
 }
 
@@ -250,6 +249,9 @@ mva_data_mod <- mva_data %>%
   filter(Jahr < 2024 & Jahr >= 2020) %>%
   mutate(Land = factor(Land, levels = c("DE", "AT")),
          Jahr_c = Jahr - min(Jahr)) #center year variable
+
+mva_data_mod$Land <- relevel(factor(mva_data_mod$Land), ref = "AT")
+
 
 mva_poisson <- glm(value ~ Jahr_c * Land + offset(log(pop_value)),
                    family = poisson(link = "log"),
@@ -270,8 +272,10 @@ adults_data_mod <- adults_data %>%
     Jahr_c = Jahr - min(Jahr)  # center year variable
   )
 
+adults_data_mod$Land <- relevel(factor(adults_data_mod$Land), ref = "AT")
+
 can_use_mod <- glm(cbind(can_use, n - can_use) ~ Jahr_c * Land,
-                   family = quasibinomial(link = "logit"),
+                   family = binomial(link = "logit"),
                    data = adults_data_mod)
 summary(can_use_mod)
 exp(cbind(OR = coef(can_use_mod), confint(can_use_mod)))
