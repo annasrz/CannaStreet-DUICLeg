@@ -5,7 +5,7 @@
 # PROJECT TITLE:  CANNASTREET - Analysis of Manuscript "Short-term effects of cannabis legalisation in Germany on driving under the influence of cannabis"
 # SUPPLEMENT: Sensitivity Analysis - Difference-in-Differences Approach for the whole sample (not limited to at least monthly cannabis users)
 # CODE AUTHOR:    Anna Schranz
-# DATE STARTED:   020625
+# DATE STARTED:   281025
 
 # ==================================================================================================================================================================
 # ==================================================================================================================================================================
@@ -227,16 +227,6 @@ data <- data %>%
     TRUE ~ NA_real_  # NA for any other cases
   ))
 
-# pepare variable DUIA12M
-data <- data %>%
-  mutate(DUIA = as_factor(DUIA),
-         DUIA12M = case_when(
-           DUIA %in% c("Ja, innerhalb der letzten 30 Tage", "Ja, innerhalb der letzten 12 Monate") ~ 1,
-           DUIA %in% c("Ja, länger als 12 Monate her", "Nein, nie") ~ 0,
-           is.na(DUIA) ~ 0, #as NA means no alcohol use in past 12M
-           TRUE ~ NA_real_
-         ))
-
 data <- data %>%
   mutate(tobacco_freq = haven::as_factor(tobacco_freq),
          alcohol_freq = haven::as_factor(alcohol_freq),
@@ -272,7 +262,7 @@ data <- data %>%
 #     )
 #   )
 # ==================================================================================================================================================================
-# Sample definition (all, but without non-repeated cases)
+# Sample definition (all, but without repeated cases)
 # ==================================================================================================================================================================
 #subsample of non-repeated cases
 df_GSZB2 <- subset(data, GSZB2 == 1)
@@ -388,8 +378,8 @@ if (dataexport) {
     save_kable(file = paste0(folder_path_tables, "DiD_DUIC_Sample1_", DATE, ".html"))
 }
 
-
-
+# ==================================================================================================================================================================
+# Prevalence estimates by country and wave
 aggregates_DUIC <- df_GSZB2 %>%
   group_by(Land, Welle) %>%
   summarise(
