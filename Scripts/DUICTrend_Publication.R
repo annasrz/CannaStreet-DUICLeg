@@ -11,13 +11,13 @@
 # ==================================================================================================================================================================
 
 
-# 0) ESSENTIALS
+# ESSENTIALS
 # ______________________________________________________________________________________________________________________
 
 # clean workspace
 rm(list=ls())
 
-packages <- c("tidyverse", "car", "haven", "kableExtra", "boot", "emmeans", "sf", "rnaturalearthdata", "rnaturalearth", "ggthemes")
+packages <- c("tidyverse", "car", "haven", "kableExtra", "boot", "survey", "emmeans", "sf", "rnaturalearthdata", "rnaturalearth", "ggthemes")
 
 # Install packages not yet installed
 installed_packages <- packages %in% rownames(installed.packages())
@@ -168,14 +168,8 @@ data_GER_1_sel <- data_GER_1 %>%
                 GSZB2, ZS, AS1, AS2, AS3, can_freq, can_use_12M, DRIVERLICENSE, DUIC, DUIC.FREQ.01M_wave1coding, DUIC.FREQ.12M_wave1coding,
                 DUIC12m_full, DUIC12m_alone, DUIC12m_mixed, DUIC30d_full, DUIC30d_alone, DUIC30d_mixed, Welle, 
                 MEDICALUSE.01, MEDICALUSE.02, DUIC.MIXEDUSE_old, Land, DUIC.INTOX, DGURBA, sport_freq, sport_12M, fish_12M, SOURCE.1, gisd_5, AGS,
-                gambling_freq, alcohol_freq, tobacco_freq, DUIA, use_benzos, use_heroin)#, MILEAGE, starts_with("SPEEDING")) %>%
-# mutate(MILEAGE = as_factor(MILEAGE), 
-#        drives = case_when(MILEAGE == "Gar nicht" ~ FALSE,
-#                           MILEAGE %in% c("Bis 5.000 km", "5.001 - 20.000 km", "Mehr als 20.000 km") ~ TRUE,
-#                           TRUE ~ NA),
-#        #speeding as factor
-#        across(starts_with("SPEEDING"), as_factor)) %>%
-# select(-MILEAGE)
+                gambling_freq, alcohol_freq, tobacco_freq, DUIA, use_benzos, use_heroin)
+
 
 data_GER_2_sel <- data_GER_2 %>%
   select(-weights) %>%
@@ -185,12 +179,7 @@ data_GER_2_sel <- data_GER_2 %>%
          can_freq, can_use_12M, DUIC.MIXEDUSE, DUIC.MED, DRIVERLICENSE, CWM.PRE, DUIC, DUIC.FREQ.01M_wave1coding, DUIC.FREQ.01M_exact, DUIC.FREQ.12M_wave1coding,
          DUIC.FREQ.01M_wave2coding, DUIC.FREQ.12M_wave2coding, DUIC.FREQ.12M_exact, DUIC.MED, DUIC12m_full, DUIC12m_alone, DUIC12m_mixed, 
          DUIC30d_full, DUIC30d_alone, DUIC30d_mixed, Welle, MEDICALUSE.01, MEDICALUSE.02, Land, DUIC.INTOX, DGURBA, sport_12M, sport_freq, fish_12M, SOURCE.1, gisd_5, AGS,
-         gambling_freq, alcohol_freq, tobacco_freq, DUIA, use_benzos, use_heroin) #MILEAGE, starts_with("SPEEDING")) %>%
-# mutate(MILEAGE = as_factor(MILEAGE),
-#        drives = case_when(MILEAGE == "Gar nicht" ~ FALSE,
-#                           MILEAGE %in% c("Bis 5.000 km", "5.001 - 20.000 km", "20.001 - 30.000 km", "mehr als 30.000 km") ~ TRUE,
-#                           TRUE ~ NA)) %>%
-# select(-MILEAGE)
+         gambling_freq, alcohol_freq, tobacco_freq, DUIA, use_benzos, use_heroin) 
 
 data_AT_1_sel <- data_AT_1 %>%
   mutate(DUIC.MIXEDUSE_old = DUIC.MIXEDUSE, Land = "AT") %>%
@@ -198,7 +187,7 @@ data_AT_1_sel <- data_AT_1 %>%
          GSZB2, ZS, AS1, AS2, AS3, can_freq, can_use_12M, DRIVERLICENSE, DUIC, 
          DUIC.FREQ.01M_wave1coding, DUIC.FREQ.12M_wave1coding, DUIC12m_full, DUIC12m_alone, DUIC12m_mixed, 
          DUIC30d_full, DUIC30d_alone, Welle, MEDICALUSE.01, MEDICALUSE.02, DUIC.MIXEDUSE_old, Land, sport_12M, sport_freq, fish_12M, DGURBA, AGS,
-         gambling_freq, alcohol_freq, tobacco_freq, DUIA) #starts_with("SPEEDING"))
+         gambling_freq, alcohol_freq, tobacco_freq, DUIA) 
 
 data_AT_2_sel <- data_AT_2 %>%
   select(ID, sex, weights, edu_group, agegroup, agegroup_basicsample, GSZB2, ZS, AS1, AS2, AS3, can_freq, age_in_years, AUDITC2,
@@ -216,8 +205,10 @@ data <- bind_rows(data_GER_1_sel, data_GER_2_sel, data_AT_1_sel, data_AT_2_sel)
 data$Land <- relevel(factor(data$Land), ref = "AT")
 data$Welle <- factor(data$Welle, levels = c(1, 2))
 
-# prepare variables
-#----------------------------------------------------------
+
+# VARIABLE PREPARATION
+# ______________________________________________________________________________________________________________________
+
 #randomly assign sex == "divers" to "male" or "female"
 divers_indices <- which(data$sex == "divers")
 n_divers <- length(divers_indices)
@@ -234,16 +225,7 @@ data <- data %>%
     TRUE ~ NA_real_  # NA for any other cases
   ))
 
-# pepare variable DUIA12M
-data <- data %>%
-  mutate(DUIA = as_factor(DUIA),
-         DUIA12M = case_when(
-           DUIA %in% c("Ja, innerhalb der letzten 30 Tage", "Ja, innerhalb der letzten 12 Monate") ~ 1,
-           DUIA %in% c("Ja, länger als 12 Monate her", "Nein, nie") ~ 0,
-           is.na(DUIA) ~ 0, #as NA means no alcohol use in past 12M
-           TRUE ~ NA_real_
-         ))
-
+# gambling, alcohol, tobacco use in the past 12 months
 data <- data %>%
   mutate(tobacco_freq = haven::as_factor(tobacco_freq),
          alcohol_freq = haven::as_factor(alcohol_freq),
@@ -255,57 +237,100 @@ data <- data %>%
          use_heroin = as_factor(use_heroin),
          use_sedatives = if_else(use_benzos == "ausgewählt" | use_heroin == "ausgewählt", 1, 0))
 
-
-#     alcohol_freq_num = case_when(
-#       alcohol_freq_chr == "(fast) täglich" ~ 365,
-#       alcohol_freq_chr == "mindestens einmal pro Woche" ~ 52,
-#       alcohol_freq_chr == "mindestens einmal im Monat" ~ 12,
-#       alcohol_freq_chr == "seltener als einmal im Monat" ~ 6,
-#       alcohol_freq_chr == "gar nicht" ~ 0,
-#       TRUE ~ NA_real_
-#     ),
-#     AUDITC2_num = case_when(
-#       AUDITC2 == 1 ~ 1.5,
-#       AUDITC2 == 2 ~ 3.5,
-#       AUDITC2 == 3 ~ 5.5,
-#       AUDITC2 == 4 ~ 8,
-#       AUDITC2 == 5 ~ 10,
-#       TRUE ~ 0
-#     ),
-#     drinks_per_year = case_when(
-#       alcohol_freq_chr == "gar nicht" ~ 0,  # gar nicht -> 0
-#       alcohol_freq_chr != "gar nicht" & is.na(AUDITC2) ~ NA_real_,  # trinken, aber C2 fehlt -> NA
-#       TRUE ~ alcohol_freq_num * AUDITC2_num
-#     )
-#   )
-# ==================================================================================================================================================================
-# #Sample description - Sample 1 (all, but without non-repeated cases)
-# ==================================================================================================================================================================
-#subsample of non-repeated cases
+# SAMPLE DEFINITIONS 
+# ______________________________________________________________________________________________________________________
+# Sample 1 (entire population, non-repeated cases)
 df_GSZB2 <- subset(data, GSZB2 == 1)
 
+# Sample 2 (monthly cannabis users without medical exemption)
+df_DUIC_full <- subset(data, AS3 == 1)
+
+
+# ==================================================================================================================================================================
+# #Sample description - Sample 1 (all, but without repeated cases)
+# ==================================================================================================================================================================
+
+#N
 table(df_GSZB2$Welle, df_GSZB2$Land)
 
+#GISD distribution
 table(df_GSZB2$Welle[df_GSZB2$Land == "DE"], df_GSZB2$gisd_5[df_GSZB2$Land == "DE"], useNA = "ifany") #GISD: 0 = lowest deprivation, 1 = highest deprivation
+
+#sex
 table(df_GSZB2$sex, df_GSZB2$Welle, df_GSZB2$Land, useNA = "ifany")
+prop.table(table(df_GSZB2$sex, df_GSZB2$Welle, df_GSZB2$Land, useNA = "ifany"), margin = c(2,3))
+
+# education
 table(df_GSZB2$edu_group, df_GSZB2$Welle, df_GSZB2$Land, useNA = "ifany")
+prop.table(table(df_GSZB2$edu_group, df_GSZB2$Welle, df_GSZB2$Land, useNA = "ifany"), margin = c(2,3))
+
+# age
 table(df_GSZB2$agegroup, df_GSZB2$Welle, df_GSZB2$Land, useNA = "ifany")
+prop.table(table(df_GSZB2$agegroup, df_GSZB2$Welle, df_GSZB2$Land, useNA = "ifany"), margin = c(2,3))
+
+# urbanicity
 table(df_GSZB2$DGURBA, df_GSZB2$Welle, df_GSZB2$Land, useNA = "ifany")
+prop.table(table(df_GSZB2$DGURBA, df_GSZB2$Welle, df_GSZB2$Land, useNA = "ifany"), margin = c(2,3))
 
 #weighted percentages
 demograf_vars <- c("sex", "edu_group", "agegroup", "DGURBA", "gisd_5")
 
 result_list <- list()
 
+
 for (var in demograf_vars) {
-  # Variable inkl. NA als Faktorlevel
+
   var_vec <- df_GSZB2[[var]]
-  var_vec <- addNA(var_vec)  # NA als eigener Faktorlevel
-  tab <- with(df_GSZB2, tapply(weights, list(Welle, Land, var_vec), sum, na.rm=TRUE))
-  weighted_perc <- apply(tab, c(1, 2), function(x) 100 * x / sum(x, na.rm=TRUE))
+  var_vec <- addNA(var_vec) # NAs as a separate level
+  
+  tab <- with(df_GSZB2, tapply(weights, list(Welle, Land, var_vec), sum, na.rm = TRUE))
+  
+  weighted_perc <- apply(tab, c(1, 2), function(x) 100 * x / sum(x, na.rm = TRUE))
+  
+  print(paste("Weighted n for", var, ":"))
+  print(round(tab, 1))
+  
   print(paste("Weighted percentages for", var, ":"))
   print(round(weighted_perc, 1))
+
 }
+
+
+# do sociadem variables differ between measurement waves? weighted chi square test for sociodemographic variables by wave (within country)
+design <- svydesign(ids = ~1, data = df_GSZB2, weights = ~weights)
+
+design_DE <- subset(design, Land == "DE")
+design_AT <- subset(design, Land == "AT")
+
+lapply(
+  demograf_vars,
+  function(v) {
+    cat("\n---------------------------------\n")
+    cat("Variable:", v, "\n")
+    cat("---------------------------------\n")
+    form <- as.formula(paste("~ Welle +", v))
+    test <- svychisq(form, design_DE, , statistic="Chisq")
+    print(test)
+  }
+)
+
+#same for Austria
+lapply(
+  demograf_vars,
+  function(v) {
+    #skip gisd_5 (not available in AT)
+    if (v == "gisd_5") {
+      return(NULL)
+    }
+    cat("\n---------------------------------\n")
+    cat("Variable:", v, "\n")
+    cat("---------------------------------\n")
+    form <- as.formula(paste("~ Welle +", v))
+    test <- svychisq(form, design_AT, , statistic="Chisq")
+    print(test)
+  }
+)
+
 
 #weighted percentages for sex, pooled
 tab <- with(df_GSZB2, tapply(weights, sex, sum, na.rm=TRUE))
@@ -375,14 +400,14 @@ map <- ggplot() +
 # Save the map
 if (dataexport) {
   ggsave(
-    filename = paste0(folder_path_plots, "map_sample1", DATE, ".tiff"),
+    filename = paste0(folder_path_plots, "map_sample1", DATE, ".svg"),
     plot = map,
     width = 107,                   
     height = 90,                  
     units = "mm",                  
     dpi = 300,
     bg = "white",
-    device = "tiff")
+    device = "svg")
 }
 
 # 12-month prevalence of cannabis, alcohol, tobacco use, and gambling 
@@ -421,20 +446,6 @@ aggregates_gambling <- df_GSZB2 %>%
 # ==================================================================================================================================================================
 # #Sample description - Sample 2 (monthly cannabis users without medical exemption)
 # ==================================================================================================================================================================
-df_DUIC_full <- subset(data, AS3 == 1)
-
-# #all speeding cols to factors
-# df_DUIC_full <- df_DUIC_full %>%
-#   mutate(across(starts_with("SPEEDING"), as_factor))
-# 
-# ,
-#          across(starts_with("SPEEDING"),
-#                 ~ case_when(
-#                   drives == FALSE ~ "nodriving",
-#                   TRUE ~ as.character(.x)
-#                 )))
-
-
 # flow chart: exclusions
 table(df_GSZB2$Welle, df_GSZB2$Land, df_GSZB2$can_use_12M)
 
@@ -509,9 +520,6 @@ mischkonsum_weights_alt2 <- c(
   "Immer neben Cannabis auch Alkohol oder andere Drogen konsumiert" = 0
 )
 
-
-
-
 DUIC30_df <- df_GSZB2 %>%
   filter(
     !(MEDICALUSE.01 == "Ausschließlich für medizinische Zwecke" &
@@ -551,8 +559,6 @@ DUIC30_df <- df_GSZB2 %>%
   filter(!is.na(DUIC_only_freq_30_num), 
          !is.na(DUIC_psu_freq_30_num)) 
 
-
-
 table(DUIC30_df$Land)
 table(DUIC30_df$sex, useNA = "ifany")
 table(DUIC30_df$edu_group, useNA = "ifany")
@@ -574,93 +580,10 @@ lapply(demograf_vars_DUIC, prop.tab)
 summary(DUIC30_df$age_in_years)
 
 # ==================================================================================================================================================================
-# #12M can use for Welle and Land - weighted DiD
+# PRIMARY ANALYSIS: 12M can use for Welle and Land - weighted DiD
 # ==================================================================================================================================================================
 
-# parallel trends before survey? 
-
-# Daten für Erwachsene (AT: 15–64 Jahre (EUDA), GER: 18–64 Jahre (ESA))
-adults_data <- data.frame(
-  Land = c(rep("AT", 3), rep("DE", 5)),
-  Jahr = c(2008, 2015, 2020, 2009, 2012, 2015, 2018, 2021),
-  can_use_prev12M = c(3.5, 6.4, 6.3, 4.8, 4.5, 6.1, 7.1, 8.8),
-  cohort = "Adults"
-)
-
-# Daten für Jugendliche (ESPAD-Daten)
-adolescents_data <- data.frame(
-  Land = c("AT", "DE", "AT", "DE", "AT", "DE", "AT", "DE", "AT", "DE"),
-  Jahr = c(2003, 2003, 2007, 2007, 2015, 2015, 2019, 2019, 2024, 2024),
-  can_use_prev12M = c(9.3, 10.9, 6.2, 5.7, 9.2, 7.7, 11.3, 10.5, 6.1, 6.8),
-  cohort = "Adolescents"
-)
-
-cannabis_use_data <- rbind(adults_data, adolescents_data)
-
-#plot trends in both countries fpr adults and adolescents
-trend_canuse_pre <- ggplot(cannabis_use_data, aes(x = Jahr, y = can_use_prev12M, color = Land, linetype = cohort)) +
-  geom_line(size = 0.7) +
-  geom_point(size = 1.5) +
-  labs(x = "Year",
-       y = "Past 12-month cannabis use prevalence",
-       color = "",
-       linetype = ""
-  ) +
-  scale_y_continuous(
-    breaks = seq(0, 17, by = 2),
-    labels = paste0(seq(0, 17, by = 2), "%"),
-    limits = c(0, 17), expand = c(0, 0)
-  ) +
-  scale_x_continuous(
-    breaks = seq(2004, 2025, by = 2),
-    limits = c(2002, 2025), expand = c(NA, 0)
-  ) +
-  scale_color_manual(values = colors_country, labels = country_labels) +
-  scale_linetype_manual(values = c("twodash", "solid")) +
-  theme_gdocs(base_family = "Calibri", base_size = 9) +
-  theme(
-    panel.grid.minor = element_line(color = "gray80", linetype = "dotted", linewidth = 0.3),
-    axis.title.y = element_text(color= "black"),
-    axis.title.x = element_text(color= "black"),
-    axis.text.y = element_text(color= "black"),
-    axis.text.x = element_text(color= "black", angle = 45, hjust = 1),
-    strip.text = element_text(color= "black", face = "bold"),
-    legend.position = "bottom",
-    legend.title = element_text(color= "black"),
-    legend.text = element_text(color= "black"),
-    legend.box.margin = margin(t = -9, unit = "pt") #abstand zwischen legenden und plot
-    # legend.margin = margin(t = 6, unit = "pt") #abstand zwischen legendeninhalt und legendenrahmen
-  ) +
-  guides(color = guide_legend(nrow = 2, byrow = TRUE))
-# theme(
-#   panel.grid.minor = element_blank(),
-#   axis.title.y = element_text(size = 15),
-#   axis.title.x = element_text(size = 15),
-#   axis.text = element_text(size = 13),
-#   strip.text = element_text(size = 14, face = "bold"),
-#   legend.position = "bottom",
-#   legend.title = element_text(size = 15),
-#   legend.text = element_text(size = 13),
-#   legend.margin = margin(t = -5, b = 0, unit = "pt"),
-#   legend.box.margin = margin(t = -10, unit = "pt"),
-#   plot.background = element_rect(color = "black", fill = NA, linewidth = 0.5)
-# )
-
-#save as tiff
-if (dataexport) {
-  ggsave(
-    filename = paste0(folder_path_plots, "trend_canuse_pre_", DATE, ".tiff"),
-    plot = trend_canuse_pre,
-    width = 107,                   
-    height = 90,                  
-    units = "mm",                  
-    dpi = 400,
-    device = "tiff"
-  )
-}
-
-
-
+## PRIMARY ANALYSIS
 #weighted DiD analysis for can use 12M
 glm_diff_in_diff <- glm(can_use_12M ~ Welle * Land, data = df_GSZB2, family = "binomial", weights = weights)
 summary(glm_diff_in_diff)
@@ -669,16 +592,8 @@ logisticPseudoR2s(glm_diff_in_diff)
 glm_diff_in_diff_canuse_null <- glm(can_use_12M ~ 1, data = df_GSZB2, family = "binomial", weights = weights)
 anova(glm_diff_in_diff_canuse_null, glm_diff_in_diff, test = "Chisq")
 
-#glm diff in diff only germany 
-glm_diff_in_diff_GER <- glm(can_use_12M ~ Welle, data = df_GSZB2[df_GSZB2$Land == "DE", ], family = "binomial", weights = weights)
-summary(glm_diff_in_diff_GER)
-DiD_coef_canuse12m_GER <- exp(cbind(OR = coef(glm_diff_in_diff_GER), confint(glm_diff_in_diff_GER)))
-logisticPseudoR2s(glm_diff_in_diff_GER)
-glm_diff_in_diff_canuse_null_GER <- glm(can_use_12M ~ 1, data = df_GSZB2[df_GSZB2$Land == "DE", ], family = "binomial", weights = weights)
-anova(glm_diff_in_diff_canuse_null_GER, glm_diff_in_diff_GER, test = "Chisq")
 
-
-
+## SENSITIVITY ANALYSES
 #unweighted DiD analysis for can use 12M
 glm_diff_in_diff_unweighted <- glm(can_use_12M ~ Welle * Land, data = df_GSZB2, family = "binomial")
 summary(glm_diff_in_diff_unweighted)
@@ -687,9 +602,19 @@ logisticPseudoR2s(glm_diff_in_diff_unweighted)
 glm_diff_in_diff_canuse_null_unweighted <- glm(can_use_12M ~ 1, data = df_GSZB2, family = "binomial")
 anova(glm_diff_in_diff_canuse_null_unweighted, glm_diff_in_diff_unweighted, test = "Chisq")
 
+# weighted DiD analysis for can use 12M in Germany only
+glm_diff_in_diff_GER <- glm(can_use_12M ~ Welle, data = df_GSZB2[df_GSZB2$Land == "DE", ], family = "binomial", weights = weights)
+summary(glm_diff_in_diff_GER)
+DiD_coef_canuse12m_GER <- exp(cbind(OR = coef(glm_diff_in_diff_GER), confint(glm_diff_in_diff_GER)))
+logisticPseudoR2s(glm_diff_in_diff_GER)
+glm_diff_in_diff_canuse_null_GER <- glm(can_use_12M ~ 1, data = df_GSZB2[df_GSZB2$Land == "DE", ], family = "binomial", weights = weights)
+anova(glm_diff_in_diff_canuse_null_GER, glm_diff_in_diff_GER, test = "Chisq")
 
-#adjusted DiD analysis for can use 12M with confounders (but no weights)
-#chi square tests for categorical variables
+
+# adjusted DiD analysis for can use 12M with confounders (but no weights)
+
+# chi square tests to decide which confounders to include
+# _____________________________________________________________________________________________________________________
 # sex 
 table_sex_can <- table(df_GSZB2[df_GSZB2$Welle == 1,]$can_use_12, df_GSZB2[df_GSZB2$Welle == 1,]$sex, useNA = "ifany")
 table_sex_can
@@ -734,8 +659,10 @@ table_gambling_can <- table(df_GSZB2[df_GSZB2$Welle == 1,]$can_use_12, df_GSZB2[
 table_gambling_can
 prop.table(table_gambling_can, margin = 2)
 chisq.test(table_gambling_can) # significant
+# _____________________________________________________________________________________________________________________
 
-# Sensitivity analysis 2: adjusted DiD analysis for can use 12M with sociodemographic confounders (but no weights)
+
+# adjusted DiD analysis for can use 12M with sociodemographic confounders (but no weights)
 glm_diff_in_diff_adj_con <- glm(can_use_12M ~ agegroup + sex + edu_group + DGURBA + Welle * Land, data = df_GSZB2, family = "binomial")
 summary(glm_diff_in_diff_adj_con)
 vif(glm_diff_in_diff_adj_con)
@@ -745,25 +672,22 @@ glm_diff_in_diff_canuse_null_unweighted_complete <- glm(can_use_12M ~ 1, data = 
 anova(glm_diff_in_diff_canuse_null_unweighted_complete, glm_diff_in_diff_adj_con, test = "Chisq")
 DiD_coef_canuse12m_adjust_con <- exp(cbind(OR = coef(glm_diff_in_diff_adj_con), confint(glm_diff_in_diff_adj_con)))
 
-# Sensitivity analysis 3: adjusted DiD analysis for can use 12M with sociodemographic and behavioral confounders (but no weights)
+
+# adjusted DiD analysis for can use 12M with sociodemographic and behavioral confounders (but no weights)
 glm_diff_in_diff_adj_con_ext <- glm(can_use_12M ~ agegroup + sex + edu_group + DGURBA + gambling_freq + alcohol_freq + sport_freq + Welle * Land, data = df_GSZB2, family = "binomial") #alcohol_freq + 
 summary(glm_diff_in_diff_adj_con_ext)
 vif(glm_diff_in_diff_adj_con_ext)
 logisticPseudoR2s(glm_diff_in_diff_adj_con_ext)
 anova(glm_diff_in_diff_canuse_null_unweighted_complete, glm_diff_in_diff_adj_con_ext, test = "Chisq")
-# save as html table
-# if (dataexport) {
-#   library(kableExtra)
-#   kable(DiD_adj_coef_canuse12m, format = "html", digits = 2, caption = "Weighted DiD Analysis for Past-Year Cannabis Use") %>%
-#     kable_styling("striped", full_width = F) %>%
-#     save_kable(file = paste0(folder_path_tables, "DiD_w_can_use_12M_", DATE, ".html"))
-# }
+DiD_coef_canuse12m_adjust_con_ext <- exp(cbind(OR = coef(glm_diff_in_diff_adj_con_ext), confint(glm_diff_in_diff_adj_con_ext)))
+
 
 # ==================================================================================================================================================================
-# #12M prev of DUIC full Welle and Land - DiD
+# SECONDARY ANALYSIS: 12M prev of DUIC full Welle and Land - DiD
 # ==================================================================================================================================================================
 
-#descriptive statistics for DUIC full prevalence with CIs
+# descriptive statistics for DUIC full prevalence with CIs
+# _____________________________________________________________________________________________________________________
 
 #DUIC 12m prev
 aggregates_DUIC <- df_DUIC_full %>%
@@ -774,11 +698,11 @@ aggregates_DUIC <- df_DUIC_full %>%
   ) %>%
   unnest_wider(results)
 
-##bivariate analysis to find potential confounders
+# chi square tests to decide which confounders to include
+# _____________________________________________________________________________________________________________________
 
 df_wave1 <- subset(data, Welle == 1 & AS3 == 1) 
 
-#chi square tests for categorical variables
 # sex 
 table_sex <- table(df_wave1$DUIC12m_full, df_wave1$sex, useNA = "ifany")
 table_sex
@@ -845,35 +769,12 @@ table_gambling <- table(df_wave1$DUIC12m_full, df_wave1$gambling_freq, useNA = "
 table_gambling
 prop.table(table_gambling, margin = 2)
 chisq.test(table_gambling) 
+# _____________________________________________________________________________________________________________________
 
-#DUIA 12m
-table_DUIA <- table(df_wave1$DUIC12m_full, df_wave1$DUIA12M, useNA = "ifany")
-table_DUIA
-prop.table(table_DUIA, margin = 2)
-chisq.test(table_DUIA) # significant
+## SECONDARY ANALYSIS (main DUIC DiD model)
+# DID analysis for DUIC 12M prevalence
 
-#sedatives
-table_sedatives <- table(df_wave1$DUIC12m_full, df_wave1$use_sedatives)
-table_sedatives
-prop.table(table_sedatives, margin = 2)
-chisq.test(table_sedatives) # significant, but no data in Austria in Welle 1 -> cannot be used as confounder
-#correlation with alc freq
-#table_sedatives_alc <- prop.table(table(df_wave1$use_sedatives, df_wave1$alcohol_freq), margin = 2)
-
-# DID analysis for DUIC full prevalence
-
-df_DUIC_full$Land <- relevel(factor(df_DUIC_full$Land), ref = "AT")
-df_DUIC_full$Welle <- factor(df_DUIC_full$Welle, levels = c(1, 2))  # Welle 1 als Referenz
-
-DiD_unadjusted <- glm(DUIC12m_full ~ Welle * Land, data = df_DUIC_full, family = "binomial")
-summary(DiD_unadjusted)
-logisticPseudoR2s(DiD_unadjusted)
-DiD_null <- glm(DUIC12m_full ~ 1, data = df_DUIC_full, family = "binomial")
-anova(DiD_null, DiD_unadjusted, test = "Chisq")
-DiD_unadj_coef <- exp(cbind(OR = coef(DiD_unadjusted), confint(DiD_unadjusted)))
-
-
-# Adjusted DiD analysis 1 (only covariates)
+# Adjusted DiD analysis 1 (only sociodemographic covariates)
 DiD_adjusted <- glm(DUIC12m_full ~ DRIVERLICENSE_bin + agegroup + sex + edu_group + Welle * Land, data = df_DUIC_full, family = "binomial")
 summary(DiD_adjusted)
 logisticPseudoR2s(DiD_adjusted)
@@ -882,44 +783,34 @@ DiD_null_complete <- glm(DUIC12m_full ~ 1, data = df_DUIC12m_full_complete, fami
 anova(DiD_null_complete, DiD_adjusted, test = "Chisq")
 vif(DiD_adjusted)
 
-# # confidence intervals
-# DiD_adj_coef <- exp(cbind(OR = coef(DiD_adjusted), confint(DiD_adjusted)))
-# if (dataexport) {
-#   kable(DiD_adj_coef, format = "html", digits = 2, caption = "Adjusted DiD Analysis for DUIC Full Prevalence") %>%
-#     kable_styling("striped", full_width = F) %>%
-#     save_kable(file = paste0(folder_path_tables, "DiD_adjusted_DUIC_full_", DATE, ".html"))
-# }
+## SENSITIVITY ANALYSES
+# unadjusted DiD analysis for DUIC
+DiD_unadjusted <- glm(DUIC12m_full ~ Welle * Land, data = df_DUIC_full, family = "binomial")
+summary(DiD_unadjusted)
+logisticPseudoR2s(DiD_unadjusted)
+DiD_null <- glm(DUIC12m_full ~ 1, data = df_DUIC_full, family = "binomial")
+anova(DiD_null, DiD_unadjusted, test = "Chisq")
+DiD_unadj_coef <- exp(cbind(OR = coef(DiD_unadjusted), confint(DiD_unadjusted)))
 
 
-# Adjusted DiD analysis 2 (sociademographic + behavioral covariates)
+# Adjusted DiD analysis 2 (sociademographic + behavioral covariates) for DUIC
 DiD_adjusted_2 <- glm(DUIC12m_full ~ DRIVERLICENSE_bin + agegroup + sex + edu_group + alcohol_freq + gambling_freq + Welle * Land, data = df_DUIC_full, family = "binomial")
 summary(DiD_adjusted_2)
 vif(DiD_adjusted_2)
 logisticPseudoR2s(DiD_adjusted_2)
 anova(DiD_null_complete, DiD_adjusted_2, test = "Chisq")
+DiD_adj2_coef <- exp(cbind(OR = coef(DiD_adjusted_2), confint(DiD_adjusted_2)))
 
 
-
-# calculate estimated marginal means
-emm <- emmeans(DiD_adjusted, ~ Welle * Land, type = "response")
-emm_df <- as.data.frame(emm)
-
-# estimated probabilities for each country and wave
-p_DE_t0 <- emm_df$prob[emm_df$Welle == 1 & emm_df$Land == "DE"]
-p_DE_t1 <- emm_df$prob[emm_df$Welle == 2 & emm_df$Land == "DE"]
-p_AT_t0 <- emm_df$prob[emm_df$Welle == 1 & emm_df$Land == "AT"]
-p_AT_t1 <- emm_df$prob[emm_df$Welle == 2 & emm_df$Land == "AT"]
-
-# absolute differences in percentage points for each country
-diff_DE <- round((p_DE_t1 - p_DE_t0) * 100, 2)
-diff_AT <- round((p_AT_t1 - p_AT_t0) * 100, 2)
-
-# DiD: absolute difference in difference in percentage points
-did_abs_percent <- round((diff_DE - diff_AT), 2)
-
-diff_DE   
-diff_AT  
-did_abs_percent
+# 30D prev of DUIC - DiD analysis (instead of 12M prev)
+# Adjusted DiD analysis
+DiD_DUIC30d_adjusted <- glm(DUIC30d_full ~ DRIVERLICENSE_bin + agegroup + sex + edu_group + Welle * Land, data = df_DUIC_full, family = "binomial")
+summary(DiD_DUIC30d_adjusted)
+vif(DiD_DUIC30d_adjusted)
+logisticPseudoR2s(DiD_DUIC30d_adjusted)
+DiD_DUIC30d_null <- glm(DUIC30d_full ~ 1, data = df_DUIC12m_full_complete, family = "binomial")
+anova(DiD_DUIC30d_null, DiD_DUIC30d_adjusted, test = "Chisq")
+DiD_DUIC30d_adj_coef <- exp(cbind(OR = coef(DiD_DUIC30d_adjusted), confint(DiD_DUIC30d_adjusted)))
 
 
 
@@ -992,117 +883,83 @@ plot_DUIC_canuse <- aggregates_plot %>%
   ) +
   guides(color = guide_legend(nrow = 2, byrow = TRUE))
 
-#export as tiff
+#export as svg
 if (dataexport) {
   ggsave(
-    filename = paste0(folder_path_plots, "DUIC_canuse_prevalence_", DATE, ".tiff"),
+    filename = paste0(folder_path_plots, "DUIC_canuse_prevalence_", DATE, ".svg"),
     plot = plot_DUIC_canuse,
     bg = "white",
     width = 120,                   
     height = 110,                  
     units = "mm",                  
     dpi = 400,
-    device = "tiff"
+    device = "svg"
   )
 }
 
 
 # for DSK
-plot_DUIC_DSK <- aggregates_plot %>% filter (variable == "b) DUIC") %>%
-  ggplot(aes(x = as.factor(Welle), y = prop, color = Land, group = Land)) +
-  geom_line(size = 1, position = position_dodge(width = 0.05)) +
-  geom_point(size = 3, position = position_dodge(width = 0.05)) +  # Punkte leicht versetzen damit sch die KIs nicht überlappen
-  geom_errorbar(aes(ymin = lower, ymax = upper),
-                width = 0.04, alpha = 0.5, size = 0.4, position = position_dodge(width = 0.05))  + # Fehlerbalken versetzen
-  geom_label(aes(label = scales::percent(prop, accuracy = 0.1)),
-             size = 4,
-             label.size = 0.2,
-             fill = "white",
-             color = "black",
-             hjust = -0.2,
-             vjust = -1,
-             fontface = "bold",
-             position = position_dodge(width = 0.1)) +  # Labels versetzen
-  labs(title = str_wrap("12-Monats-Prävalenz DUIC unter mind. monatlich Cannabiskonsumierenden in DE und AT", width = 60),
-       subtitle = str_wrap("Vergleich pre/post Legalisierung, exkl. ausschl. med. Konsum mit Rezept (DE, t0: n=393, t1: n=589; AT, t0: n=86, t1: n=92)", width = 75),
-       y = "12-Monats-Prävalenz",
-       x = "",
-       color = "Land") +
-  scale_y_continuous(labels = scales::percent_format(accuracy = 1),
-                     breaks = seq(0, 0.4, by = 0.05), limits = c(0, 0.4), expand = c(0, 0)) +
-  scale_x_discrete(labels = welle_labels) +
-  scale_color_manual(values = colors_country) +
-  theme_gdocs(base_family = "Aptos", base_size = 10) +
-  theme(
-    text = element_text(color = "black"),
-    axis.text = element_text(color = "black"),
-    axis.title = element_text(color = "black"),
-    axis.ticks = element_line(color = "black"),
-    legend.text = element_text(color = "black"),
-    legend.title = element_text(color = "black"),
-    strip.text = element_text(color = "black"), 
-    plot.title = element_text(color = "black"),
-    plot.subtitle = element_text(color = "black"),
-    plot.caption = element_text(color = "black"),
-    panel.grid.minor = element_line(color = "gray80", linetype = "dotted", linewidth = 0.3),
-    panel.grid.major.x = element_blank(),
-    panel.grid.minor.x = element_blank()
-  )
-
-#save
-if (dataexport) {
-  ggsave(
-    filename = paste0(folder_path_plots, "DUIC_canuse_prevalence_DSK_", DATE, ".tiff"),
-    plot = plot_DUIC_DSK,
-    width = 160,                   
-    height = 110,                  
-    units = "mm",                  
-    dpi = 400,
-    device = "tiff",
-    bg = "white"
-  )
-}
-
-# ==================================================================================================================================================================
-# #Sensitivity analysis: 30D prev of DUIC full Welle and Land - DiD
-# ==================================================================================================================================================================
-
-DiD_DUIC30d_unadjusted <- glm(DUIC30d_full ~ Welle * Land, data = df_DUIC_full, family = "binomial")
-summary(DiD_DUIC30d_unadjusted)
-
-# confidence intervals
-DiD_DUIC30d_unadj_coef <- exp(cbind(OR = coef(DiD_DUIC30d_unadjusted), confint(DiD_DUIC30d_unadjusted)))
-#save as html table
+# plot_DUIC_DSK <- aggregates_plot %>% filter (variable == "b) DUIC") %>%
+#   ggplot(aes(x = as.factor(Welle), y = prop, color = Land, group = Land)) +
+#   geom_line(size = 1, position = position_dodge(width = 0.05)) +
+#   geom_point(size = 3, position = position_dodge(width = 0.05)) +  # Punkte leicht versetzen damit sch die KIs nicht überlappen
+#   geom_errorbar(aes(ymin = lower, ymax = upper),
+#                 width = 0.04, alpha = 0.5, size = 0.4, position = position_dodge(width = 0.05))  + # Fehlerbalken versetzen
+#   geom_label(aes(label = scales::percent(prop, accuracy = 0.1)),
+#              size = 4,
+#              label.size = 0.2,
+#              fill = "white",
+#              color = "black",
+#              hjust = -0.2,
+#              vjust = -1,
+#              fontface = "bold",
+#              position = position_dodge(width = 0.1)) +  # Labels versetzen
+#   labs(title = str_wrap("12-Monats-Prävalenz DUIC unter mind. monatlich Cannabiskonsumierenden in DE und AT", width = 60),
+#        subtitle = str_wrap("Vergleich pre/post Legalisierung, exkl. ausschl. med. Konsum mit Rezept (DE, t0: n=393, t1: n=589; AT, t0: n=86, t1: n=92)", width = 75),
+#        y = "12-Monats-Prävalenz",
+#        x = "",
+#        color = "Land") +
+#   scale_y_continuous(labels = scales::percent_format(accuracy = 1),
+#                      breaks = seq(0, 0.4, by = 0.05), limits = c(0, 0.4), expand = c(0, 0)) +
+#   scale_x_discrete(labels = welle_labels) +
+#   scale_color_manual(values = colors_country) +
+#   theme_gdocs(base_family = "Aptos", base_size = 10) +
+#   theme(
+#     text = element_text(color = "black"),
+#     axis.text = element_text(color = "black"),
+#     axis.title = element_text(color = "black"),
+#     axis.ticks = element_line(color = "black"),
+#     legend.text = element_text(color = "black"),
+#     legend.title = element_text(color = "black"),
+#     strip.text = element_text(color = "black"), 
+#     plot.title = element_text(color = "black"),
+#     plot.subtitle = element_text(color = "black"),
+#     plot.caption = element_text(color = "black"),
+#     panel.grid.minor = element_line(color = "gray80", linetype = "dotted", linewidth = 0.3),
+#     panel.grid.major.x = element_blank(),
+#     panel.grid.minor.x = element_blank()
+#   )
+# 
+# #save
 # if (dataexport) {
-#   library(kableExtra)
-#   kable(DiD_unadj_coef, format = "html", digits = 2, caption = "Unadjusted DiD Analysis for DUIC Full Prevalence") %>%
-#     kable_styling("striped", full_width = F) %>%
-#     save_kable(file = paste0(folder_path_tables, "DiD_unadjusted_DUIC_full_", DATE, ".html"))
+#   ggsave(
+#     filename = paste0(folder_path_plots, "DUIC_canuse_prevalence_DSK_", DATE, ".tiff"),
+#     plot = plot_DUIC_DSK,
+#     width = 160,                   
+#     height = 110,                  
+#     units = "mm",                  
+#     dpi = 400,
+#     device = "tiff",
+#     bg = "white"
+#   )
 # }
 
-# Adjusted DiD analysis
-DiD_DUIC30d_adjusted <- glm(DUIC30d_full ~ DRIVERLICENSE_bin + agegroup + sex + edu_group + Welle * Land, data = df_DUIC_full, family = "binomial")
-summary(DiD_DUIC30d_adjusted)
-logisticPseudoR2s(DiD_DUIC30d_adjusted)
-DiD_DUIC30d_null <- glm(DUIC30d_full ~ 1, data = df_DUIC12m_full_complete, family = "binomial")
-anova(DiD_DUIC30d_null, DiD_DUIC30d_adjusted, test = "Chisq")
-
-# confidence intervals
-DiD_DUIC30d_adj_coef <- exp(cbind(OR = coef(DiD_DUIC30d_adjusted), confint(DiD_DUIC30d_adjusted)))
-if (dataexport) {
-  kable(DiD_DUIC30d_adj_coef, format = "html", digits = 2, caption = "Adjusted DiD Analysis for past 30 day DUIC Full Prevalence") %>%
-    kable_styling("striped", full_width = F) %>%
-    save_kable(file = paste0(folder_path_tables, "DiD_adjusted_DUIC30d_full_", DATE, ".html"))
-}
-
-#VIF adjusted model
-vif(DiD_DUIC30d_adjusted)
-
 # ==================================================================================================================================================================
-# Negative Control - DiD (eating fish in past 12M) - Sample 1
+# Negative Controls - DiD (eating fish in past 12M) - Sample 1
 # # ==================================================================================================================================================================# same for df_GSZB2
 
 table(df_GSZB2$fish_12M, df_GSZB2$Welle, df_GSZB2$Land)
+
 df_GSZB2 %>%
   group_by(Land, Welle, fish_12M) %>%
   summarise(n = n(), .groups = "drop") %>%
@@ -1110,58 +967,33 @@ df_GSZB2 %>%
   mutate(percent = round(100 * n / sum(n), 1)) %>%
   arrange(Land, Welle, desc(percent))
 
-DiD_fish_unw_GSP <- glm(fish_12M ~ Welle * Land, data = df_GSZB2, family = "binomial")
-summary(DiD_fish_unw_GSP)
-# confidence intervals
-DiD_fish_unw_coef_GSP <- exp(cbind(OR = coef(DiD_fish_unw_GSP), confint(DiD_fish_unw_GSP)))
-# if (dataexport) {
-#   kable(DiD_fish_unw_coef_GSP, format = "html", digits = 2, caption = "Unweighted DiD Analysis for eating fish in past 12M (GSZB2)") %>%
-#     kable_styling("striped", full_width = F) %>%
-#     save_kable(file = paste0(folder_path_tables, "DiD_unw_fish_12M_GSZB2_", DATE, ".html"))
-# }
-
-# Aweighted DiD analysis for eating fish in past 12M (GSZB2)
+# weighted DiD analysis for eating fish in past 12M (GSZB2)
 DiD_fish_w_GSP <- glm(fish_12M ~ Welle * Land, data = df_GSZB2, family = "binomial", weights = weights)
 summary(DiD_fish_w_GSP)
-# confidence intervals
 DiD_fish_w_GSP_coef <- exp(cbind(OR = coef(DiD_fish_w_GSP), confint(DiD_fish_w_GSP)))
-if (dataexport) {
-  kable(DiD_fish_w_GSP_coef, format = "html", digits = 2, caption = "Weighted DiD Analysis for eating fish in past 12M (GSZB2)") %>%
-    kable_styling("striped", full_width = F) %>%
-    save_kable(file = paste0(folder_path_tables, "DiD_w_fish_12M_GSZB2_", DATE, ".html"))
-}
+logisticPseudoR2s(DiD_fish_w_GSP)
+null_fish_w_GSP <- glm(fish_12M ~ 1, data = df_GSZB2, family = "binomial", weights = weights)
+anova(null_fish_w_GSP, DiD_fish_w_GSP, test = "Chisq")
 
 # ==================================================================================================================================================================
 # Negative Control - DiD (doing sports in past 12M) - Sample 2
 # # ==================================================================================================================================================================
-# DiD analysis for doing sports in past 12M
+
 table(df_DUIC_full$sport_12M, df_DUIC_full$Welle, df_DUIC_full$Land)
-DiD_sport_unadjusted <- glm(sport_12M ~ Welle * Land, data = df_DUIC_full, family = "binomial")
-summary(DiD_sport_unadjusted)
-# confidence intervals
-DiD_sport_unadj_coef <- exp(cbind(OR = coef(DiD_sport_unadjusted), confint(DiD_sport_unadjusted)))
-# if (dataexport) {
-#   kable(DiD_sport_unadj_coef, format = "html", digits = 2, caption = "Unadjusted DiD Analysis for Doing Sports in Past 12M") %>%
-#     kable_styling("striped", full_width = F) %>%
-#     save_kable(file = paste0(folder_path_tables, "DiD_unadjusted_sport_12M_", DATE, ".html"))
-# }
+
 # Adjusted DiD analysis for doing sports in past 12M
 DiD_sport_adjusted <- glm(sport_12M ~ DRIVERLICENSE_bin + agegroup + sex + edu_group + Welle * Land, data = df_DUIC_full, family = "binomial")
 summary(DiD_sport_adjusted)
-# confidence intervals
+logisticPseudoR2s(DiD_sport_adjusted)
+null_sport<- glm(sport_12M ~ 1, data = df_DUIC12m_full_complete, family = "binomial")
+anova(null_sport, DiD_sport_adjusted, test = "Chisq")
 DiD_sport_adj_coef <- exp(cbind(OR = coef(DiD_sport_adjusted), confint(DiD_sport_adjusted)))
-if (dataexport) {
-  kable(DiD_sport_adj_coef, format = "html", digits = 2, caption = "Adjusted DiD Analysis for Doing Sports in Past 12M") %>%
-    kable_styling("striped", full_width = F) %>%
-    save_kable(file = paste0(folder_path_tables, "DiD_adjusted_sport_12M_", DATE, ".html"))
-}
 
 # ==================================================================================================================================================================
 # DUIC episodes by cannabis use frequency and polysubstance use
 # ==================================================================================================================================================================
 
-
-# new df as also non DUIC participants are needed (but not for sample size calculations)
+# new df as also non DUIC participants are needed (but not for sample size calculations abova)
 DUIC30_df <- df_GSZB2 %>%
   filter(
     !(MEDICALUSE.01 == "Ausschließlich für medizinische Zwecke" &
@@ -1210,7 +1042,6 @@ sd(DUIC30_df %>% filter(analyseDUIC == 1) %>% pull(DUIC_freq_30_num))
 
 
 # calculate DUIC episodes by cannabis use frequency and polysubstance use
-
 sum_duicep <- DUIC30_df %>%
   group_by(can_freq) %>%
   summarise(
@@ -1301,16 +1132,16 @@ fig1_w <- ggplot(pop_duicep_long %>% subset(grundgesamtheit != "DUIC episodes"),
   #legend in one row
   guides(fill = guide_legend(nrow = 1, byrow = TRUE))
 
-# save plot as tiff
+# save plot as svg
 if (dataexport) {
   ggsave(
-    filename = paste0(folder_path_plots, "pop_duiconlyep_duicpsuep_w_", DATE, ".tiff"),
+    filename = paste0(folder_path_plots, "pop_duiconlyep_duicpsuep_w_", DATE, ".svg"),
     plot = fig1_w,
     width = 107,                   
     height = 110,                  
     units = "mm",                  
     dpi = 400,
-    device = "tiff",
+    device = "svg",
     bg = "white"
   )
 }
@@ -1361,9 +1192,8 @@ if (dataexport) {
 #   )
 # }
 
-
-# ==================================================================================================================================================================
 # Sensititvity analysis: only German data
+# _____________________________________________________________________________________________________________________
 
 DUIC30_df_GER <- df_GSZB2 %>%
   filter(
@@ -1489,37 +1319,35 @@ fig1_w_GER <- ggplot(pop_duicep_long_GER %>% subset(grundgesamtheit != "DUIC epi
   #legend in one row
   guides(fill = guide_legend(nrow = 1, byrow = TRUE))
 
-# save plot as tiff
+# save plot as svg
 if (dataexport) {
   ggsave(
-    filename = paste0(folder_path_plots, "pop_duiconlyep_duicpsuep_w_GER_", DATE, ".tiff"),
+    filename = paste0(folder_path_plots, "pop_duiconlyep_duicpsuep_w_GER_", DATE, ".svg"),
     plot = fig1_w_GER,
     width = 107,                   
     height = 110,                  
     units = "mm",                  
     dpi = 400,
-    device = "tiff",
+    device = "svg",
     bg = "white"
   )
 }
 
-#and as svg
-if (dataexport) {
-  ggsave(
-    filename = paste0(folder_path_plots, "pop_duiconlyep_duicpsuep_w_GER_", DATE, ".svg"),
-    plot = fig1_w_GER,
-    width = 9,
-    height = 6,
-    dpi = 300,
-    bg = "white",
-    device = "svg"
-  )
-}
+# #and as svg
+# if (dataexport) {
+#   ggsave(
+#     filename = paste0(folder_path_plots, "pop_duiconlyep_duicpsuep_w_GER_", DATE, ".svg"),
+#     plot = fig1_w_GER,
+#     width = 9,
+#     height = 6,
+#     dpi = 300,
+#     bg = "white",
+#     device = "svg"
+#   )
+# }
 
-
-# ==================================================================================================================================================================
 # Sensititvity analysis: alternative mischkonsum weights 1
-# ==================================================================================================================================================================
+# _____________________________________________________________________________________________________________________
 sum(sum_duicep$n_duicep)
 sum(sum_duicep$n_duicep_only_alt1)
 sum(sum_duicep$n_duic_psu_alt1)
@@ -1585,26 +1413,22 @@ fig1_w_alt1 <- ggplot(pop_duicep_long_alt1 %>% subset(grundgesamtheit != "DUIC e
   #legend in one row
   guides(fill = guide_legend(nrow = 1, byrow = TRUE))
 
-# save plot as tiff
+# save plot as svg
 if (dataexport) {
   ggsave(
-    filename = paste0(folder_path_plots, "pop_duiconlyep_duicpsuep_w_alt1_", DATE, ".tiff"),
+    filename = paste0(folder_path_plots, "pop_duiconlyep_duicpsuep_w_alt1_", DATE, ".svg"),
     plot = fig1_w_alt1,
     width = 107,                   
     height = 110,                  
     units = "mm",                  
     dpi = 400,
-    device = "tiff",
+    device = "svg",
     bg = "white"
   )
 }
 
-
-
-
-# ==================================================================================================================================================================
 # Sensititvity analysis: alternative mischkonsum weights 2
-# ==================================================================================================================================================================
+# ____________________________________________________________________________________________________________________
 sum(sum_duicep$n_duicep_only_alt2)
 sum(sum_duicep$n_duic_psu_alt2)
 
@@ -1669,16 +1493,16 @@ fig1_w_alt2 <- ggplot(pop_duicep_long_alt2 %>% subset(grundgesamtheit != "DUIC e
   #legend in one row
   guides(fill = guide_legend(nrow = 1, byrow = TRUE))
 
-# save plot as tiff
+# save plot as svg
 if (dataexport) {
   ggsave(
-    filename = paste0(folder_path_plots, "pop_duiconlyep_duicpsuep_w_alt2_", DATE, ".tiff"),
+    filename = paste0(folder_path_plots, "pop_duiconlyep_duicpsuep_w_alt2_", DATE, ".svg"),
     plot = fig1_w_alt2,
     width = 107,                   
     height = 110,                  
     units = "mm",                  
     dpi = 400,
-    device = "tiff",
+    device = "svg",
     bg = "white"
   )
 }
@@ -1686,7 +1510,7 @@ if (dataexport) {
 
 
 # ==================================================================================================================================================================
-# Confidence Intervals via Bootstrapping
+# Confidence Intervals via Bootstrapping for DUIC distribution by polysubstance use and cannabis use frequency
 # ==================================================================================================================================================================
 
 # Share of DUIC-only and DUIC-PSU episodes among all DUIC episodes
